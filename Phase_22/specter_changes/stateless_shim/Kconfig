@@ -1,0 +1,10 @@
+# Stateless PSRAM execution marker (Phase 18).
+#
+# This component is linked ONLY into stateless-variant builds (see
+# mpconfigboard.cmake gating), so this option exists only there. Firmware
+# code (e.g. ports/esp32/main.c) uses `#ifdef
+# CONFIG_STATELESS_PSARAM_EXECUTION` to take stateless-only paths; every
+# other build behaves exactly as stock.
+config STATELESS_PSARAM_EXECUTION
+    bool
+    default y

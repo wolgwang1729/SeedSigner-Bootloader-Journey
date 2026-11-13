@@ -1,0 +1,17 @@
+# Phase 22 Kern stateless handoff overlay (loader boots CPU0 only)
+CONFIG_FREERTOS_UNICORE=y
+CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE=y
+CONFIG_EFUSE_VIRTUAL=y
+CONFIG_EFUSE_VIRTUAL_LOG_ALL_WRITES=y
+CONFIG_SPIRAM_MEMTEST=n
+# The stateless loader verifies the payload bundle (Layer 2). Do not also run
+# IDF's secure-boot app check: the loader's eFuse key belongs to the loader,
+# not to this payload, so the check would abort in init_efuse().
+CONFIG_SECURE_BOOT=n
+CONFIG_SECURE_SIGNED_APPS_NO_SECURE_BOOT=n
+CONFIG_SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT=n
+# Stateless payload table in the loader's free 0x10000 sector: no OTA apps.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_stateless.csv"
+CONFIG_PARTITION_TABLE_OFFSET=0x10000
+CONFIG_KERN_STATELESS=y

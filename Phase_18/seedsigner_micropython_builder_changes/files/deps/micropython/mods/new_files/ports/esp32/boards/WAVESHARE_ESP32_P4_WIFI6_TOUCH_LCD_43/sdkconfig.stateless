@@ -1,0 +1,55 @@
+# Stateless-loader handoff prerequisites (Phase 18 slice: the signed
+# MicroPython bundle is executed from PSRAM via the desktop secure loader's
+# Cache-MMU remap — never through the 2nd-stage bootloader's app path).
+#
+# Applied ONLY by BOARD_VARIANT=PRE_REV3_STATELESS (mpconfigvariant file next
+# to this one), appended AFTER sdkconfig.board so every line here wins over the
+# dual-core flash-execution firmware config. Mirrors the proven Phase 12
+# shim-payload prerequisites. The PRE_REV3 flash firmware config is untouched.
+#
+# PSRAM XIP layout is a HARD build prerequisite (same rule as the C shim
+# payloads): IROM/DROM must land at 0x48000000, which the loader MMU-maps from
+# PSRAM — never the default 0x40000000 flash-cache window. (Also set by
+# board_common's waveshare_p4_lcd43/sdkconfig.defaults; repeated here so the
+# stateless contract holds even if that file changes.)
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_FETCH_INSTRUCTIONS=y
+CONFIG_SPIRAM_RODATA=y
+CONFIG_SPIRAM_XIP_FROM_PSRAM=y
+CONFIG_SPIRAM_MEMTEST=n
+CONFIG_SPIRAM_USE_MEMMAP=y
+
+# Single-core: the loader's JMP + shim run the payload on CPU0 only.
+CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE=y
+CONFIG_FREERTOS_UNICORE=y
+
+# Keep memory permissions RWX for the payload.
+CONFIG_ESP_SYSTEM_PMP_IDRAM_SPLIT=n
+
+# Watchdogs/stack-guard off during bring-up (same as the C shim payloads).
+# NOTE: the task WDT stays ON (inherited from sdkconfig.board): MicroPython's
+# machine.WDT binding links against esp_task_wdt_*_user, which vanish when the
+# task WDT is compiled out (link failure). The WDT only starts with the
+# scheduler, i.e. after the shim's early busy-loops, so it can't fire there.
+CONFIG_ESP_SYSTEM_HW_STACK_GUARD=n
+
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
+
+# Match the loader layout (its partition table lives at 0x20000).
+CONFIG_PARTITION_TABLE_OFFSET=0x20000
+# Stateless-variant table (auto offsets after 0x20000; never flashed — the
+# bundle carries just the app image). Overrides the board file's pinned 32MiB
+# table, which overlaps a 0x20000 table offset and fails gen_esp32part.
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions-stateless.csv"
+
+# Console: default UART0 at 115200 — the loader's console. MicroPython's
+# uart_stdout_init is shim-wrapped away (no RX ISR, no re-init), so the whole
+# session stays at one baud: fb_live.py needs a single --baud 115200.
+# (Overrides the board file's 921600 Custom-UART0 bring-up config.)
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
+
+# Our DEV-KIT is 16 MB (the board file targets the 32 MB panel variant).
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y

@@ -1,0 +1,240 @@
+--- a/main/CMakeLists.txt
++++ b/main/CMakeLists.txt
+@@ -40,6 +40,7 @@
+ 
+ idf_component_register(
+     SRCS "main.c" "esp_image.c" "bundle_validate.c" "anti_phish.c" "bip39_wordlist.c"
++         "salt_bind.c"
+          ${TARGET_SRCS}
+          "${KEYS_DIR}/${VENDOR_KEYS_PROFILE}/vendor_keys.c"
+     PRIV_INCLUDE_DIRS "${KEYS_DIR}" "."
+--- a/main/anti_phish.c
++++ b/main/anti_phish.c
+@@ -6,6 +6,7 @@
+ #include <string.h>
+ #include "freertos/FreeRTOS.h"
+ #include "freertos/task.h"
++#include "salt_bind.h"
+ 
+ #define RANDOM_FILL_PARTITION_LABEL "random_fill"
+ #define NVS_PARTITION_LABEL         "nvs"
+@@ -133,7 +134,12 @@
+         return ESP_ERR_INVALID_STATE;
+     }
+ 
+-    derive_bip39_words(current_hash, words);
++    /* Phase 20 R3: bind the words to the install salt + SD card
++     * (reversible, no HMAC). The tamper gate above is unchanged. */
++    if (salt_bind_derive(current_hash, words) != ESP_OK) {
++        ESP_LOGE(TAG, "Salt binding failed. Halting.");
++        return ESP_FAIL;
++    }
+ 
+     ESP_LOGI(TAG, "================================================");
+     ESP_LOGI(TAG, "  ANTI-PHISHING PROOF: %s %s %s %s",
+--- a/main/targets/esp32p4/storage_p4.c
++++ b/main/targets/esp32p4/storage_p4.c
+@@ -12,6 +12,7 @@
+ 
+ #include "storage.h"
+ #include "loader_config.h"
++#include "salt_bind.h"
+ 
+ static const char *TAG = "SEEDSIGNER_LOADER";
+ 
+@@ -90,6 +91,12 @@
+         return NULL;
+     }
+ 
++    /* Phase 20 R3: snapshot the card identity now (before the TOCTOU-safe
++     * unmount below) so the anti-phishing words bind the card whose bytes
++     * get verified. */
++    salt_bind_snapshot_card(card->cid.mfg_id, card->cid.oem_id,
++                            card->cid.name, card->cid.serial);
++
+     struct stat st;
+     if (stat(SD_FIRMWARE_PATH, &st) != 0) {
+         ESP_LOGE(TAG, "Firmware file %s not found. Halting.", SD_FIRMWARE_PATH);
+--- /dev/null
++++ b/main/salt_bind.c
+@@ -0,0 +1,129 @@
++/* Phase 20 R3 — software-bound anti-phishing (salt + SD-card binding). */
++#include "salt_bind.h"
++#include <string.h>
++#include "esp_log.h"
++#include "esp_partition.h"
++#include "esp_random.h"
++#include "sha2.h"
++#include "anti_phish.h" /* derive_bip39_words */
++
++static const char *TAG = "salt_bind";
++
++#define SB_NVS_LABEL "nvs"
++#define SB_SLOT_OFF  0x2000u
++#define SB_MAGIC     0x53414C54u /* "SALT" */
++
++typedef struct {
++    uint32_t magic;
++    uint8_t salt[16];
++} __attribute__((packed)) sb_state_t;
++
++static uint8_t s_cid_pack[16];
++static bool s_cid_present = false;
++static uint8_t s_last_salt[16];
++
++static void put_u32le(uint8_t *p, uint32_t v)
++{
++    p[0] = (uint8_t)(v & 0xFF);
++    p[1] = (uint8_t)((v >> 8) & 0xFF);
++    p[2] = (uint8_t)((v >> 16) & 0xFF);
++    p[3] = (uint8_t)((v >> 24) & 0xFF);
++}
++
++void salt_bind_snapshot_card(int mfg_id, int oem_id, const char *name, int serial)
++{
++    put_u32le(s_cid_pack + 0, (uint32_t)mfg_id);
++    put_u32le(s_cid_pack + 4, (uint32_t)oem_id);
++    put_u32le(s_cid_pack + 8, (uint32_t)serial);
++    memset(s_cid_pack + 12, 0, 4);
++    if (name) {
++        memcpy(s_cid_pack + 12, name, strnlen(name, 4) < 4 ? strnlen(name, 4) : 4);
++    }
++    __asm__ volatile("" ::: "memory");
++    s_cid_present = true;
++}
++
++esp_err_t salt_bind_get(uint8_t salt_out[16])
++{
++    const esp_partition_t *part = esp_partition_find_first(
++        ESP_PARTITION_TYPE_DATA, 0x99, SB_NVS_LABEL);
++    if (!part) {
++        ESP_LOGE(TAG, "nvs partition not found");
++        return ESP_FAIL;
++    }
++    sb_state_t st;
++    if (esp_partition_read(part, SB_SLOT_OFF, &st, sizeof(st)) != ESP_OK) {
++        ESP_LOGE(TAG, "salt slot read failed");
++        return ESP_FAIL;
++    }
++    if (st.magic != SB_MAGIC) {
++        esp_fill_random(st.salt, sizeof(st.salt));
++        st.magic = SB_MAGIC;
++        if (esp_partition_erase_range(part, SB_SLOT_OFF, 0x1000) != ESP_OK) {
++            ESP_LOGE(TAG, "salt slot erase failed");
++            return ESP_FAIL;
++        }
++        sb_state_t w = st;
++        if (esp_partition_write(part, SB_SLOT_OFF, &w, sizeof(w)) != ESP_OK) {
++            ESP_LOGE(TAG, "salt slot write failed");
++            return ESP_FAIL;
++        }
++        ESP_LOGI(TAG, "Salt provisioned (fresh TRNG install salt)");
++    }
++    memcpy(salt_out, st.salt, 16);
++    memcpy(s_last_salt, st.salt, 16);
++    return ESP_OK;
++}
++
++esp_err_t salt_bind_derive(const uint8_t fill_hash[32], char words[4][12])
++{
++    uint8_t salt[16];
++    if (salt_bind_get(salt) != ESP_OK) {
++        memset(words, 0, 4 * 12);
++        return ESP_FAIL;
++    }
++    SHA256_CTX ctx;
++    uint8_t bound[32];
++    sha256_Init(&ctx);
++    sha256_Update(&ctx, fill_hash, 32);
++    sha256_Update(&ctx, salt, 16);
++    if (s_cid_present) {
++        sha256_Update(&ctx, s_cid_pack, 16);
++    }
++    sha256_Final(&ctx, bound);
++    derive_bip39_words(bound, words);
++
++    ESP_LOGI(TAG, "================================================");
++    ESP_LOGI(TAG, "  R3 BOUND PROOF: %s %s %s %s",
++             words[0], words[1], words[2], words[3]);
++    ESP_LOGI(TAG, "  R3 salt_id=%02x%02x%02x%02x cid=%s",
++             salt[0], salt[1], salt[2], salt[3],
++             s_cid_present ? "bound" : "absent(salt-only)");
++    if (s_cid_present) {
++        ESP_LOGI(TAG, "  R3 cid_pack=%02x%02x%02x%02x%02x%02x%02x%02x"
++                      "%02x%02x%02x%02x%02x%02x%02x%02x",
++                 s_cid_pack[0], s_cid_pack[1], s_cid_pack[2], s_cid_pack[3],
++                 s_cid_pack[4], s_cid_pack[5], s_cid_pack[6], s_cid_pack[7],
++                 s_cid_pack[8], s_cid_pack[9], s_cid_pack[10], s_cid_pack[11],
++                 s_cid_pack[12], s_cid_pack[13], s_cid_pack[14], s_cid_pack[15]);
++    }
++    ESP_LOGI(TAG, "================================================");
++    memset(bound, 0, sizeof(bound));
++    return ESP_OK;
++}
++
++void salt_bind_debug_hex(char salt_hex[33], char cid_hex[33], bool *cid_present)
++{
++    static const char *H = "0123456789abcdef";
++    for (int i = 0; i < 16; i++) {
++        salt_hex[2 * i] = H[(s_last_salt[i] >> 4) & 0xF];
++        salt_hex[2 * i + 1] = H[s_last_salt[i] & 0xF];
++        cid_hex[2 * i] = H[(s_cid_pack[i] >> 4) & 0xF];
++        cid_hex[2 * i + 1] = H[s_cid_pack[i] & 0xF];
++    }
++    salt_hex[32] = '\0';
++    cid_hex[32] = '\0';
++    if (cid_present) {
++        *cid_present = s_cid_present;
++    }
++}
+--- /dev/null
++++ b/main/salt_bind.h
+@@ -0,0 +1,48 @@
++/* Phase 20 R3 — software-bound anti-phishing (salt + SD-card binding).
++ *
++ * The R3 word derivation is SHA256(fill_hash || salt || cid_pack):
++ *  - fill_hash: the TRNG random_fill SHA-256 (tamper-evident, unchanged gate).
++ *  - salt: 16 TRNG bytes in the NVS `nvs`-partition sector @0x2000
++ *    ({magic "SALT", salt}), provisioned once, reversibly re-saltable by
++ *    erasing the sector. Third 4 KB sector: anti-phishing owns [0,0x1000),
++ *    R2 rollback owns [0x1000,0x2000) — never a shared erase sector.
++ *  - cid_pack: 16 bytes packed from the mounted SD card's decoded CID
++ *    (mfg_id || oem_id || serial || name[0..3], little-endian). The P4
++ *    storage path snapshots it before unmount; if no snapshot exists (S3,
++ *    or mount failure) the binding degrades to fill||salt and logs it.
++ *
++ * Reversible by construction: no eFuse, no HMAC peripheral. The brute-force
++ * bound stays ~44 bits (4 words) — unlike a DOWNSTREAM-purpose HMAC key,
++ * software binding cannot make forgery physically impossible. That number
++ * belongs to the deferred lockdown phase.
++ */
++#pragma once
++#include <stdbool.h>
++#include <stddef.h>
++#include <stdint.h>
++#include "esp_err.h"
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++/* Snapshot the mounted card's identity. Called by the storage path after
++ * a successful mount, before unmount. Safe to call never (S3): the bind
++ * then covers fill||salt and reports cid absent. */
++void salt_bind_snapshot_card(int mfg_id, int oem_id, const char *name, int serial);
++
++/* Provision the salt on first use (TRNG) and return it. ESP_FAIL only on
++ * flash errors (caller must fail closed). */
++esp_err_t salt_bind_get(uint8_t salt_out[16]);
++
++/* bound = SHA256(fill_hash || salt || cid_pack?). Prints salt_id/cid hex
++ * for the host-side verifier, then derives words via derive_bip39_words.
++ * Returns ESP_FAIL on salt-storage errors (caller must fail closed). */
++esp_err_t salt_bind_derive(const uint8_t fill_hash[32], char words[4][12]);
++
++/* Hex of the last pack/salt used (for logs/tests). Valid after derive. */
++void salt_bind_debug_hex(char salt_hex[33], char cid_hex[33], bool *cid_present);
++
++#ifdef __cplusplus
++}
++#endif

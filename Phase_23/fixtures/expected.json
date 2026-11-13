@@ -1,0 +1,49 @@
+{
+  "source": "https://testqrs.com/?tx=ss_native_segwit-change-3in",
+  "scenario_id": "ss_native_segwit-change-3in",
+  "seed_name": "alice",
+  "master_fingerprint": "814d5ff8",
+  "mnemonic": "fence runway woman funny loan vote anxiety alpha neither filter mechanic silent burger sphere athlete visit intact under film frequent manage few wife round",
+  "unsigned_txid": "2a6f31c59e8d351a6d4a4002ce3b1b515d771add6610b21a1d7717f197311ad1",
+  "unsigned_tx": "0200000003100e482ee4f08bc79caeeb6a8e7d353dfa0bd62235207d5de4e61baa5f17b8df0000000000ffffffff75a7b6c754b36ebc8513abdd7458d213f663c8670f14641e7800fecb430ff0ee0000000000ffffffff6efc8a72c4c6022a243c294a3a458b2281241728a2875b5a51f4c33e417210010000000000ffffffff0236f30200000000001600140fa986ab451bf7e1ade2413fbe1e28ce9ed889d19a790100000000001600141b0560057865cab1feb0cf3645d9b5566ae7912600000000",
+  "num_inputs": 3,
+  "input_amount": 300000,
+  "fee": 10000,
+  "change_amount": 96666,
+  "change_address": "bc1qrvzkqptcvh9trl4seumytkd42e4w0yfxya948s",
+  "recipient_amount": 193334,
+  "recipient_address": "bc1qp75cd269r0m7rt0zgylmu83ge60d3zw3erg4vc",
+  "expected_signatures": 3,
+  "verify_inputs": [
+    {
+      "sighash": "c33e33f43627e51e8e49cf0e1f92cd3f3c5cd39f5182960995115ac78e265835",
+      "keys": [
+        {
+          "pubkey": "021797a2ec39ef711b503e4de7828e2cb09e4d0c0588c38b59f4f717f299375001",
+          "fingerprint": "814d5ff8",
+          "seed": "alice"
+        }
+      ]
+    },
+    {
+      "sighash": "b2e068f53236b5d310d5484762742e6b9a801b2c706194cbaf3aef56a4811935",
+      "keys": [
+        {
+          "pubkey": "0354c348dbf49e8bd3d6aa579bf2edbbbb6793dc31ca6b0b5bc8ca43202ea0227b",
+          "fingerprint": "814d5ff8",
+          "seed": "alice"
+        }
+      ]
+    },
+    {
+      "sighash": "75e50c9e5661dd4ede0a865537c8ac0ffa544bc572a5be811212224360281572",
+      "keys": [
+        {
+          "pubkey": "03f7a5ca57f11aea8489c5f1036138a049d765d6e67e83da2902ff1826e17123f2",
+          "fingerprint": "814d5ff8",
+          "seed": "alice"
+        }
+      ]
+    }
+  ]
+}

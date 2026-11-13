@@ -1,0 +1,463 @@
+diff --git a/components/stateless_shim/CMakeLists.txt b/components/stateless_shim/CMakeLists.txt
+new file mode 100644
+index 0000000..cc434d9
+--- /dev/null
++++ b/components/stateless_shim/CMakeLists.txt
+@@ -0,0 +1,23 @@
++idf_component_register(SRCS "stateless_shim.c"
++                       INCLUDE_DIRS "."
++                       REQUIRES esp_hw_support soc hal esp_hal_wdt esp_rom heap esp_common)
++
++# Force the linker to pull in the custom entry point, the real
++# call_start_cpu0 (whose address is referenced by the shim), and the wrappers.
++target_link_options(${COMPONENT_LIB} INTERFACE
++    "-u __real_call_start_cpu0"
++    "-u __wrap_call_start_cpu0"
++    "-Wl,-e,my_entry_point"
++    "-Wl,--wrap=call_start_cpu0"
++    "-Wl,--wrap=cache_hal_init"
++    "-Wl,--wrap=spi_flash_init_chip_state"
++    "-Wl,--wrap=mspi_timing_flash_tuning"
++    "-Wl,--wrap=esp_psram_chip_init"
++    "-Wl,--wrap=bootloader_flash_update_id"
++    "-Wl,--wrap=image_process"
++    "-Wl,--wrap=esp_mspi_pin_init"
++    "-Wl,--wrap=esp_mspi_pin_reserve"
++    "-Wl,--wrap=esp_rom_output_tx_wait_idle"
++    "-Wl,--wrap=esp_rom_uart_set_clock_baudrate"
++    "-Wl,--wrap=esp_rtc_init"
++)
+diff --git a/components/stateless_shim/stateless_shim.c b/components/stateless_shim/stateless_shim.c
+new file mode 100644
+index 0000000..76e12bb
+--- /dev/null
++++ b/components/stateless_shim/stateless_shim.c
+@@ -0,0 +1,306 @@
++/*
++ * Stateless PSRAM shim for Kern (ESP32-P4, ESP-IDF v6.1)
++ *
++ * Adapted from the SeedSigner P4 MicroPython shim. The loader has already
++ * initialized PSRAM, clocks, cache/MMU and UART, verified the signed bundle,
++ * mapped the payload's PSRAM segments, and disabled the watchdogs. A normal
++ * ESP-IDF `call_start_cpu0()` would repeat that hardware init and reset the
++ * loader's state, so this shim replaces it:
++ *
++ *   my_entry_point  - naked trampoline: FPU, gp, dedicated stack
++ *   __wrap_call_start_cpu0 - software-only IDF startup:
++ *       clear BSS, install vectors, clocks, MMU software context,
++ *       run ESP_SYSTEM_INIT_FN stage 0, constructors, stage 1,
++ *       add the post-image PSRAM window to the heap, start the app.
++ *
++ * The app links with:
++ *   -Wl,-e,my_entry_point
++ *   -Wl,--wrap=call_start_cpu0
++ * plus wraps for the hardware-init functions that the loader already ran.
++ *
++ * IDF v6.1 notes:
++ *   - the init-function array is `_esp_sys_init_fn_start/end`
++ *   - constructors are run with `__libc_init_array()` (same as IDF's
++ *     start_cpu0_default), not the old __init_priority_array symbols
++ *   - build the payload with CONFIG_FREERTOS_UNICORE=y and
++ *     CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE=y, matching the loader's CPU0-only
++ *     handoff.
++ */
++
++#include <stdint.h>
++#include <string.h>
++#include <stdarg.h>
++
++#include "esp_attr.h"
++#include "esp_err.h"
++#include "esp_rom_sys.h"
++#include "esp_heap_caps.h"
++#include "esp_cpu.h"
++#include "hal/wdt_hal.h"
++#include "soc/soc.h"
++#include "soc/timer_group_struct.h"
++#include "hal/interrupt_clic_ll.h"
++#include "soc/interrupts.h"
++
++/* The loader owns UART0; give the ROM FIFO a moment to drain before the next
++ * stage. The SeedSigner shim used a 5,000,000-iteration busy loop; this is a
++ * real delay that is also tolerable in esp-emu. */
++static void shim_uart_drain(void)
++{
++    esp_rom_delay_us(2000);
++}
++
++__attribute__((used, section(".data"), aligned(16)))
++uint8_t custom_boot_stack[8192] = { 0 };
++
++void IRAM_ATTR __attribute__((naked)) my_entry_point(void)
++{
++    asm volatile (
++        "li   t0, 0x6000            \n"
++        "csrs mstatus, t0           \n"
++        ".option push                \n"
++        ".option norelax             \n"
++        "la   gp, __global_pointer$  \n"
++        ".option pop                 \n"
++        "la   sp, custom_boot_stack  \n"
++        "li   t0, 8192               \n"
++        "add  sp, sp, t0             \n"
++        "tail __wrap_call_start_cpu0 \n"
++    );
++}
++
++extern void __real_call_start_cpu0(void);
++extern int Cache_Invalidate_All(uint32_t map);
++
++void IRAM_ATTR my_trap_handler(void)
++{
++    uint32_t mcause, mepc;
++    asm volatile ("csrr %0, mcause" : "=r"(mcause));
++    asm volatile ("csrr %0, mepc" : "=r"(mepc));
++    esp_rom_printf("\r\nSHIM TRAP! mcause=0x%08x mepc=0x%08x\r\n", mcause, mepc);
++    shim_uart_drain();
++    while (1) {
++    }
++}
++
++/* IDF v6.1 startup array type. Keep this local so the shim does not depend on
++ * a private esp_system header. */
++typedef struct {
++    esp_err_t (*fn)(void);
++    uint16_t cores;
++    uint16_t stage;
++} esp_system_init_fn_t;
++
++extern esp_system_init_fn_t _esp_sys_init_fn_start;
++extern esp_system_init_fn_t _esp_sys_init_fn_end;
++
++extern void esp_startup_start_app(void);
++extern void esp_clk_init(void);
++extern void esp_perip_clk_init(void);
++extern void esp_mmu_map_init(void);
++
++static void core_intr_matrix_clear(void)
++{
++    for (int i = 0; i < ETS_MAX_INTR_SOURCE; i++) {
++        interrupt_clic_ll_route(0, i, 0);
++    }
++}
++
++extern int _bss_start_low, _bss_start_high;
++extern int _bss_end_low, _bss_end_high;
++extern int _rtc_bss_start, _rtc_bss_end;
++extern int _iram_bss_start, _iram_bss_end;
++
++void IRAM_ATTR __attribute__((noinline)) __wrap_call_start_cpu0(void)
++{
++    esp_rom_printf("\r\n[KERN-SHIM] __wrap_call_start_cpu0 entered\r\n");
++
++    /* The loader already disabled these, but the payload's reset state can
++     * differ after the jump; make it explicit and idempotent. */
++    wdt_hal_context_t rwdt_ctx = RWDT_HAL_CONTEXT_DEFAULT();
++    wdt_hal_write_protect_disable(&rwdt_ctx);
++    wdt_hal_disable(&rwdt_ctx);
++    wdt_hal_write_protect_enable(&rwdt_ctx);
++
++    REG_WRITE(0x50116020, 0x50D83AA1);
++    REG_WRITE(0x5011601C, (1U << 31) | (1U << 30) | (1U << 19) | (1U << 18));
++    REG_WRITE(0x50116020, 0);
++
++    REG_WRITE(0x50116018, 0x50D83AA1);
++    REG_WRITE(0x50116014, (1U << 31));
++    REG_CLR_BIT(0x50116000, (1U << 31) | (0xFFFU << 19) | (1U << 12));
++    REG_WRITE(0x5011602C, 0);
++    REG_WRITE(0x50116030, 0xFFFFFFFF);
++    REG_WRITE(0x50116018, 0);
++
++    wdt_hal_context_t mwdt0_ctx = { .inst = WDT_MWDT0, .mwdt_dev = &TIMERG0 };
++    wdt_hal_write_protect_disable(&mwdt0_ctx);
++    wdt_hal_disable(&mwdt0_ctx);
++    wdt_hal_write_protect_enable(&mwdt0_ctx);
++
++    wdt_hal_context_t mwdt1_ctx = { .inst = WDT_MWDT1, .mwdt_dev = &TIMERG1 };
++    wdt_hal_write_protect_disable(&mwdt1_ctx);
++    wdt_hal_disable(&mwdt1_ctx);
++    wdt_hal_write_protect_enable(&mwdt1_ctx);
++
++    /* `call_start_cpu0` normally does this. The loader cannot leave the
++     * payload's BSS in a known state because its own `.data` overlaps. */
++    memset(&_bss_start_low, 0,
++           ((uint8_t *)&_bss_end_low - (uint8_t *)&_bss_start_low));
++    memset(&_bss_start_high, 0,
++           ((uint8_t *)&_bss_end_high - (uint8_t *)&_bss_start_high));
++    memset(&_rtc_bss_start, 0,
++           ((uint8_t *)&_rtc_bss_end - (uint8_t *)&_rtc_bss_start));
++    memset(&_iram_bss_start, 0,
++           ((uint8_t *)&_iram_bss_end - (uint8_t *)&_iram_bss_start));
++    esp_rom_printf("[KERN-SHIM] BSS cleared\r\n");
++
++    asm volatile ("csrw mtvec, %0" : : "r"(my_trap_handler));
++    Cache_Invalidate_All(0x03);
++    asm volatile ("fence.i\n");
++
++    esp_rom_printf("[KERN-SHIM] clocks init\r\n");
++    esp_clk_init();
++    esp_perip_clk_init();
++    core_intr_matrix_clear();
++
++    esp_rom_printf("[KERN-SHIM] esp_mmu_map_init\r\n");
++    esp_mmu_map_init();
++
++    esp_system_init_fn_t *p = &_esp_sys_init_fn_start;
++
++    /* Stage 0: core init functions. The loader has already done the hardware
++     * parts; the wraps below turn those individual calls into no-ops. */
++    while (p < &_esp_sys_init_fn_end) {
++        if ((p->cores & 1) && (p->stage == 0)) {
++            esp_rom_printf("[KERN-SHIM] init stage0 %p\r\n", p->fn);
++            shim_uart_drain();
++            esp_err_t err = p->fn();
++            if (err != ESP_OK) {
++                esp_rom_printf("[KERN-SHIM] stage0 failed 0x%x\r\n", err);
++                while (1) {
++                }
++            }
++        }
++        p++;
++    }
++
++    /* IDF's start_cpu0_default uses __libc_init_array(); use the same path
++     * instead of the IDF 5.x __init_priority_array symbols. */
++    esp_rom_printf("[KERN-SHIM] constructors\r\n");
++    extern void __libc_init_array(void);
++    __libc_init_array();
++
++    /* Stage 1: secondary init functions assigned to CPU0. */
++    p = &_esp_sys_init_fn_start;
++    while (p < &_esp_sys_init_fn_end) {
++        if ((p->cores & 1) && (p->stage == 1)) {
++            esp_rom_printf("[KERN-SHIM] init stage1 %p\r\n", p->fn);
++            shim_uart_drain();
++            esp_err_t err = p->fn();
++            if (err != ESP_OK) {
++                esp_rom_printf("[KERN-SHIM] stage1 failed 0x%x\r\n", err);
++                while (1) {
++                }
++            }
++        }
++        p++;
++    }
++
++    /* The loader staged the image into the first 8 MB of PSRAM. Expose the
++     * rest to the payload heap. (Kern's normal esp_psram_init() is bypassed
++     * because the loader owns the PSRAM MMU.) */
++    esp_rom_printf("[KERN-SHIM] adding PSRAM heap\r\n");
++    extern esp_err_t heap_caps_add_region_with_caps(const uint32_t caps[],
++                                                    intptr_t start,
++                                                    intptr_t end);
++    uint32_t byte_aligned_caps[] = {
++        MALLOC_CAP_SPIRAM | MALLOC_CAP_DEFAULT, 0,
++        MALLOC_CAP_8BIT | MALLOC_CAP_32BIT | MALLOC_CAP_SIMD
++    };
++    heap_caps_add_region_with_caps(byte_aligned_caps, 0x48800000, 0x4A000000);
++
++    /* CLIC vector tables: a normal IDF app gets these from init_cpu(); the
++     * shim replaces call_start_cpu0(), so install them before the scheduler
++     * starts or the tick/IWDT never feeds. */
++    extern char _vector_table[];
++    extern char _mtvt_table[];
++    esp_cpu_intr_set_ivt_addr(_vector_table);
++    esp_cpu_intr_set_mtvt_addr(_mtvt_table);
++
++    esp_rom_printf("[KERN-SHIM] jumping to esp_startup_start_app\r\n");
++    shim_uart_drain();
++    esp_startup_start_app();
++
++    while (1) {
++    }
++}
++
++/* Hardware initialization that the loader already performed. */
++void IRAM_ATTR __wrap_cache_hal_init(void)
++{
++    esp_rom_printf("[KERN-SHIM] skip cache_hal_init\r\n");
++}
++
++void IRAM_ATTR __wrap_mspi_timing_flash_tuning(void)
++{
++    esp_rom_printf("[KERN-SHIM] skip mspi_timing_flash_tuning\r\n");
++}
++
++int IRAM_ATTR __wrap_esp_psram_chip_init(void)
++{
++    esp_rom_printf("[KERN-SHIM] skip esp_psram_chip_init\r\n");
++    return 0;
++}
++
++void IRAM_ATTR __wrap_bootloader_flash_update_id(void)
++{
++    esp_rom_printf("[KERN-SHIM] skip bootloader_flash_update_id\r\n");
++}
++
++int IRAM_ATTR __wrap_image_process(void)
++{
++    esp_rom_printf("[KERN-SHIM] skip image_process\r\n");
++    return 0;
++}
++
++extern esp_err_t __real_spi_flash_init_chip_state(void);
++extern void __real_esp_mspi_pin_init(void);
++extern void __real_esp_mspi_pin_reserve(void);
++
++esp_err_t IRAM_ATTR __wrap_spi_flash_init_chip_state(void)
++{
++    esp_rom_printf("[KERN-SHIM] spi_flash_init_chip_state -> real\r\n");
++    return __real_spi_flash_init_chip_state();
++}
++
++void IRAM_ATTR __wrap_esp_mspi_pin_init(void)
++{
++    esp_rom_printf("[KERN-SHIM] esp_mspi_pin_init -> real\r\n");
++    __real_esp_mspi_pin_init();
++}
++
++void IRAM_ATTR __wrap_esp_mspi_pin_reserve(void)
++{
++    esp_rom_printf("[KERN-SHIM] esp_mspi_pin_reserve -> real\r\n");
++    __real_esp_mspi_pin_reserve();
++}
++
++void IRAM_ATTR __wrap_esp_rom_output_tx_wait_idle(uint8_t uart_no)
++{
++    (void)uart_no;
++}
++
++void IRAM_ATTR __wrap_esp_rom_uart_set_clock_baudrate(uint8_t uart_no,
++                                                      uint32_t clock_hz,
++                                                      uint32_t baud_rate)
++{
++    (void)uart_no;
++    (void)clock_hz;
++    (void)baud_rate;
++}
++
++void IRAM_ATTR __wrap_esp_rtc_init(void)
++{
++    esp_rom_printf("[KERN-SHIM] skip esp_rtc_init\r\n");
++}
+diff --git a/main/CMakeLists.txt b/main/CMakeLists.txt
+index 21e2209..119ee4d 100644
+--- a/main/CMakeLists.txt
++++ b/main/CMakeLists.txt
+@@ -61,3 +61,9 @@ if(DEFINED FONT_POLICY_WIDTH AND DEFINED FONT_POLICY_HEIGHT)
+         target_compile_definitions(${COMPONENT_LIB} PRIVATE ${ICON_FONT_DEFINITIONS})
+     endif()
+ endif()
++
++if(CONFIG_KERN_STATELESS)
++    # The stateless payload is not the flash-resident app: its code lives in
++    # PSRAM, so IDF's cache2phys-based OTA lookup cannot identify it.
++    idf_build_set_property(LINK_OPTIONS "-Wl,--wrap=esp_ota_get_running_partition" APPEND)
++endif()
+diff --git a/main/Kconfig.projbuild b/main/Kconfig.projbuild
+index 1dbbba9..bb852ea 100644
+--- a/main/Kconfig.projbuild
++++ b/main/Kconfig.projbuild
+@@ -97,4 +97,15 @@ menu "Kern Configuration"
+             its UART time stays off the tasks being measured. Use
+             just scan-prof <board>.
+ 
++
++    config KERN_STATELESS
++        bool "Stateless SD-bundle payload"
++        default n
++        help
++            Build the application for the Phase 22 stateless loader. The app
++            runs from PSRAM with no flash-resident app partition of its own;
++            IDF's esp_ota_get_running_partition() cannot resolve a partition
++            from a PSRAM XIP address, so a small stateless wrapper returns the
++            payload's metadata factory partition instead.
++
+ endmenu
+diff --git a/main/stateless_ota.c b/main/stateless_ota.c
+new file mode 100644
+index 0000000..979e2a0
+--- /dev/null
++++ b/main/stateless_ota.c
+@@ -0,0 +1,37 @@
++// Phase 22 stateless compatibility shim.
++//
++// A stateless payload executes from PSRAM, not from its flash app partition.
++// esp_ota_get_running_partition() locates the running image by translating the
++// address of its own code through spi_flash_cache2phys(); that translation does
++// not describe a PSRAM XIP address and the function eventually aborts. IDF's
++// esp_partition_main_flash_region_safe() and Kern's fw_update_boot_confirm()
++// both call it, so return the payload's metadata app partition instead.
++
++#include "sdkconfig.h"
++
++#if CONFIG_KERN_STATELESS
++
++#include <esp_partition.h>
++
++static const esp_partition_t s_stateless_fallback = {
++    .flash_chip = NULL,
++    .type = ESP_PARTITION_TYPE_APP,
++    .subtype = ESP_PARTITION_SUBTYPE_APP_FACTORY,
++    .address = 0x30000,
++    .size = 0x200000,
++    .erase_size = 0x1000,
++    .label = "factory",
++    .encrypted = false,
++    .readonly = false,
++};
++
++const esp_partition_t *__wrap_esp_ota_get_running_partition(void) {
++  const esp_partition_t *part = esp_partition_find_first(
++      ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, NULL);
++  if (part != NULL) {
++    return part;
++  }
++  return &s_stateless_fallback;
++}
++
++#endif
+diff --git a/partitions_stateless.csv b/partitions_stateless.csv
+new file mode 100644
+index 0000000..55f6d4d
+--- /dev/null
++++ b/partitions_stateless.csv
+@@ -0,0 +1,16 @@
++# Kern stateless payload partition table (Phase 22)
++#
++# The payload runs from a signed SD bundle and is not OTA-updated, so it has no
++# ota_0/ota_1 app partitions. The loader's own table stays at 0x20000; this one
++# lives in the free 0x10000 sector so the payload's esp_partition/NVS calls can
++# find their state partitions. Keep every offset out of the loader's regions:
++#   0x2000-0xC000 bootloader, 0x10000 ptable, 0x20000 loader ptable,
++#   0x21000-0x29000 loader NVS/efuse, 0x30000 loader app, 0x230000+ random_fill.
++nvs,     data, nvs,   0x11000, 0x7000
++otadata, data, ota,   0x1e000, 0x2000
++# Metadata-only app entry. IDF's esp_partition_main_flash_region_safe() calls
++# esp_ota_get_running_partition() and asserts when no app partition exists, so
++# NVS erase/write would otherwise abort. The payload actually executes from
++# PSRAM; this entry describes the loader's flash app slot so the safety check
++# has a non-NULL range. It is never booted or updated.
++factory, app,  factory, 0x30000, 0x200000
+diff --git a/sdkconfig.defaults.stateless b/sdkconfig.defaults.stateless
+new file mode 100644
+index 0000000..5caaa74
+--- /dev/null
++++ b/sdkconfig.defaults.stateless
+@@ -0,0 +1,17 @@
++# Phase 22 Kern stateless handoff overlay (loader boots CPU0 only)
++CONFIG_FREERTOS_UNICORE=y
++CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE=y
++CONFIG_EFUSE_VIRTUAL=y
++CONFIG_EFUSE_VIRTUAL_LOG_ALL_WRITES=y
++CONFIG_SPIRAM_MEMTEST=n
++# The stateless loader verifies the payload bundle (Layer 2). Do not also run
++# IDF's secure-boot app check: the loader's eFuse key belongs to the loader,
++# not to this payload, so the check would abort in init_efuse().
++CONFIG_SECURE_BOOT=n
++CONFIG_SECURE_SIGNED_APPS_NO_SECURE_BOOT=n
++CONFIG_SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT=n
++# Stateless payload table in the loader's free 0x10000 sector: no OTA apps.
++CONFIG_PARTITION_TABLE_CUSTOM=y
++CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_stateless.csv"
++CONFIG_PARTITION_TABLE_OFFSET=0x10000
++CONFIG_KERN_STATELESS=y

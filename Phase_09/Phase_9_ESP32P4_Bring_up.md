@@ -100,14 +100,14 @@ Phase_09/
 
 ### Step 1: Build the Hello World as a Dummy Payload
 ```bash
-cd ~/Desktop/SoB/Phase_09/hello_world_esp32p4
+cd Phase_09/hello_world_esp32p4
 idf.py build
 ```
 
 ### Step 2: Generate the Signed Payload
 Package the `hello_world.bin` into a signed `seed.bin` using the Specter signing tool:
 ```bash
-cd ~/Desktop/SoB/Phase_09/seedsigner_bootloader_p4_stateful_os
+cd Phase_09/seedsigner_bootloader_p4_stateful_os
 python3 tools/generate_signed_payload.py \
     ../hello_world_esp32p4/build/hello_world.bin \
     seed.bin
@@ -120,7 +120,7 @@ python3 tools/generate_signed_payload.py \
 
 ### Step 4: Build and Flash the Bootloader
 ```bash
-cd ~/Desktop/SoB/Phase_09/seedsigner_bootloader_p4_stateful_os
+cd Phase_09/seedsigner_bootloader_p4_stateful_os
 idf.py fullclean
 idf.py set-target esp32p4
 idf.py build

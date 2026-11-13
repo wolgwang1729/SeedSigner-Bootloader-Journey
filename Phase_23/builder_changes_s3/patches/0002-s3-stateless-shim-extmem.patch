@@ -1,0 +1,14 @@
+diff --git a/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_S3_TOUCH_LCD_35B/stateless_shim/stateless_shim.c b/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_S3_TOUCH_LCD_35B/stateless_shim/stateless_shim.c
+index 500ce1b..8231c4d 100644
+--- a/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_S3_TOUCH_LCD_35B/stateless_shim/stateless_shim.c
++++ b/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_S3_TOUCH_LCD_35B/stateless_shim/stateless_shim.c
+@@ -150,6 +150,9 @@ void IRAM_ATTR __attribute__((noinline)) __wrap_call_start_cpu0(void) {
+     uint32_t byte_aligned_caps[] = {MALLOC_CAP_SPIRAM | MALLOC_CAP_DEFAULT, 0, MALLOC_CAP_8BIT | MALLOC_CAP_32BIT};
+     heap_caps_add_region_with_caps(byte_aligned_caps, 0x3C300000, 0x3C800000);
+ 
++    extern void heap_caps_malloc_extmem_enable(size_t limit);
++    heap_caps_malloc_extmem_enable(16384);
++
+     esp_rom_printf("Jumping to esp_startup_start_app...\r\n");
+     drain_uart_fifo();
+     esp_startup_start_app();

@@ -1,0 +1,11 @@
+diff --git a/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_S3_TOUCH_LCD_35B/mpconfigboard.cmake b/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_S3_TOUCH_LCD_35B/mpconfigboard.cmake
+index d5337e3..e203c41 100644
+--- a/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_S3_TOUCH_LCD_35B/mpconfigboard.cmake
++++ b/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_S3_TOUCH_LCD_35B/mpconfigboard.cmake
+@@ -16,3 +16,6 @@ endif()
+ 
+ # Append stateless shim component for custom bootloader execution
+ list(APPEND MICROPY_EXTRA_COMPONENT_DIRS "${MICROPY_BOARD_DIR}/stateless_shim")
++
++# Freeze SeedSigner app, embit, and headless signer into firmware
++set(MICROPY_FROZEN_MANIFEST ${MICROPY_BOARD_DIR}/manifest.py)

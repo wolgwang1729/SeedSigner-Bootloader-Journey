@@ -1,0 +1,26 @@
+rtos_int_enter () at /home/wolgwang/esp/esp-idf-v5.5/components/freertos/FreeRTOS-Kernel/portable/riscv/portasm.S:506
+506	    li      a0, 0                           /* return 0 in case we are going to branch */
+#0  rtos_int_enter () at /home/wolgwang/esp/esp-idf-v5.5/components/freertos/FreeRTOS-Kernel/portable/riscv/portasm.S:506
+#1  0x4ff0029a in _interrupt_handler () at /home/wolgwang/esp/esp-idf-v5.5/components/riscv/vectors.S:407
+#2  0x4ff0fffc in vPortYield () at /home/wolgwang/esp/esp-idf-v5.5/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:640
+#3  0x4ff0fffc in vPortYield () at /home/wolgwang/esp/esp-idf-v5.5/components/freertos/FreeRTOS-Kernel/portable/riscv/port.c:640
+#4  0x480fe940 in esp_lcd_new_dsi_bus (bus_config=bus_config@entry=0x4ff3f15c, ret_bus=ret_bus@entry=0x4ff22090 <dsi_bus>) at /home/wolgwang/esp/esp-idf-v5.5/components/esp_lcd/dsi/esp_lcd_mipi_dsi_bus.c:98
+#5  0x48000694 in p4board_display_init () at /home/wolgwang/Desktop/phase22_specter/work/specter/ports/esp32p4/components/p4board/display.c:278
+#6  0x48098680 in tft_init () at /home/wolgwang/Desktop/phase22_specter/work/specter/ports/esp32p4/components/lvgl_p4/lv_p4_hal.c:65
+#7  0x480a2e8c in display_init () at /home/wolgwang/Desktop/phase22_specter/work/specter/ports/esp32p4/components/lvgl_p4/moddisplay.c:60
+#8  display_init () at /home/wolgwang/Desktop/phase22_specter/work/specter/ports/esp32p4/components/lvgl_p4/moddisplay.c:50
+#9  0x4ff03ff4 in mp_execute_bytecode (code_state=code_state@entry=0x490972e0, inject_exc=inject_exc@entry=0x0) at /home/wolgwang/Desktop/phase22_specter/micropython/py/vm.c:1069
+#10 0x48117312 in fun_bc_call (self_in=<optimized out>, n_args=1, n_kw=0, args=0x4909702c) at /home/wolgwang/Desktop/phase22_specter/micropython/py/objfun.c:294
+#11 0x4ff03ff4 in mp_execute_bytecode (code_state=code_state@entry=0x49097010, inject_exc=inject_exc@entry=0x0) at /home/wolgwang/Desktop/phase22_specter/micropython/py/vm.c:1069
+#12 0x48117312 in fun_bc_call (self_in=<optimized out>, n_args=0, n_kw=0, args=0x4ff3f4a8) at /home/wolgwang/Desktop/phase22_specter/micropython/py/objfun.c:294
+#13 0x4ff040ac in mp_execute_bytecode (code_state=code_state@entry=0x4ff3f490, inject_exc=inject_exc@entry=0x0) at /home/wolgwang/Desktop/phase22_specter/micropython/py/vm.c:984
+#14 0x48117312 in fun_bc_call (self_in=<optimized out>, n_args=0, n_kw=0, args=0x0) at /home/wolgwang/Desktop/phase22_specter/micropython/py/objfun.c:294
+#15 0x4815a124 in parse_compile_execute (source=<optimized out>, input_kind=input_kind@entry=MP_PARSE_FILE_INPUT, exec_flags=exec_flags@entry=8) at /home/wolgwang/Desktop/phase22_specter/micropython/shared/runtime/pyexec.c:137
+#16 0x4815a642 in pyexec_frozen_module (name=0x4823d898 "main.py", allow_keyboard_interrupt=true) at /home/wolgwang/Desktop/phase22_specter/micropython/shared/runtime/pyexec.c:770
+#17 pyexec_file_if_exists (filename=filename@entry=0x4823d898 "main.py") at /home/wolgwang/Desktop/phase22_specter/micropython/shared/runtime/pyexec.c:746
+#18 0x48136b82 in mp_task (pvParameter=<optimized out>) at /home/wolgwang/Desktop/phase22_specter/micropython/ports/esp32/main.c:170
+#19 0x00000000 in ?? ()
+Backtrace stopped: frame did not save the PC
+pc             0x4ff10910	0x4ff10910 <rtos_int_enter+28>
+ra             0x4ff0029a	0x4ff0029a <_interrupt_handler+76>
+sp             0x4ff3eff0	0x4ff3eff0

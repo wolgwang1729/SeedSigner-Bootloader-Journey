@@ -1,0 +1,69 @@
+# Phase 19 addendum (Oct 19, 2026) - cold power-cycle remanence check: evidence summary
+#
+# Board: ESP32-P4-WIFI6-DEV-KIT v1.3 @ /dev/ttyACM0 via a separate UART bridge
+# (bridge stays enumerated across devkit power cuts). Full capture:
+# powercycle_session.txt (+ powercycle_session.raw). This file extracts the
+# per-cycle evidence lines in order, verbatim from the capture.
+#
+# Rig: test-build loader with the unconditional cold-boot inspector (POWERON /
+# BROWNOUT branch, 2 s capture settle, `reason=`, exact `pattern matches=N/262144`
+# counter) + canary payload (plant / status) + host rig
+# tools/power_canary_check.py (single port user: persistent logger + FIFO
+# command injection, DTR/RTS deasserted on open).
+#
+# Protocol per cycle: scrub_off -> plant -> fault_restart -> verify the pattern
+# is PHYSICALLY present (post-reboot inspect + status) -> operator cuts devkit
+# power -> cold-boot verdict. Pattern: p[i] = 0xCA4A5EED ^ i, so an intact
+# 1 MB window = 262144/262144 matches and psram_xor = 0.
+#
+# ---------------------------------------------------------------------------
+# CYCLE 1 - operator cut between 17:02:58 and 17:04:15 (power restored ~17:04:15)
+# (inspector had no matches-counter yet; verdict = first_word + payload xor)
+# ---------------------------------------------------------------------------
+[17:01:51.677] SCRUB_OFF
+[17:01:53.236] CANARY_PLANTED addr=0x48400000 len=1048576 pattern=0xCA4A5EED sram=0x5EC5EC5E
+[17:02:09.368] I (873) SEEDSIGNER_LOADER: INSPECT Canary 0x48400000: CANARY_REMANENT (non-zero words=262144 first at +0x0 first_word=0xCA4A5EED) reason=sw
+[17:02:57.414] STATUS scrub=on magic=0x00000000 psram[0]=0xCA4A5EED psram[1]=0xCA4A5EEC psram_xor=0x00000000 sram[0]=0x5EC5EC5E sram_nonzero=1024 fired=0 cycles=0
+#   ^ PRE-CUT: 1 MB pattern verified physically present across a warm reboot
+#     (first_word exact, xor=0) + 4 KB SRAM pattern present
+[17:04:18.298] I (2874) SEEDSIGNER_LOADER: INSPECT Canary 0x48400000: CANARY_REMANENT (non-zero words=262144 first at +0x0 first_word=0x4F575555) reason=poweron
+[17:07:08.340] STATUS scrub=on magic=0x491A3006 psram[0]=0x4F575555 psram[1]=0x55555554 psram_xor=0x29DAB6A0 sram[0]=0xB00B4908 sram_nonzero=1024 fired=2239781324 cycles=2553300645
+#   ^ POST-POWER-UP: pattern gone (fresh power-up junk); SRAM secret gone;
+#     LP-RAM magic gone
+#
+# ---------------------------------------------------------------------------
+# CYCLE 2 - counter added + reflash; operator cut between 17:16:31 and 17:17:33
+# ---------------------------------------------------------------------------
+[17:15:29.087] SCRUB_OFF
+[17:15:30.394] CANARY_PLANTED addr=0x48400000 len=1048576 pattern=0xCA4A5EED sram=0x5EC5EC5E
+[17:15:46.627] I (873) SEEDSIGNER_LOADER: INSPECT Canary 0x48400000: CANARY_REMANENT (non-zero words=262144 pattern matches=262144/262144 first at +0x0 first_word=0xCA4A5EED) reason=sw
+[17:16:30.959] STATUS scrub=on magic=0x00000000 psram[0]=0xCA4A5EED psram[1]=0xCA4A5EEC psram_xor=0x00000000 sram[0]=0x5EC5EC5E sram_nonzero=1024 fired=0 cycles=0
+#   ^ PRE-CUT: matches=262144/262144 (exact), xor=0, SRAM pattern present
+[17:17:36.078] I (2884) SEEDSIGNER_LOADER: INSPECT Canary 0x48400000: CANARY_REMANENT (non-zero words=262144 pattern matches=0/262144 first at +0x0 first_word=0x4F575555) reason=poweron
+[17:18:45.181] STATUS scrub=on magic=0x4D983026 psram[0]=0x4F575555 psram[1]=0x555555D4 psram_xor=0x0A06C5EA sram[0]=0xB00B4908 sram_nonzero=1024 fired=2373999052 cycles=2570077861
+#   ^ POST-POWER-UP: matches=0/262144; psram[0] and sram[0] identical to cycle 1
+#     (repeatable power-up state, not retained data)
+#
+# ---------------------------------------------------------------------------
+# Counter validation (new inspector, same session)
+# ---------------------------------------------------------------------------
+[17:14:36.119] I (2884) SEEDSIGNER_LOADER: INSPECT Canary 0x48400000: CANARY_REMANENT (non-zero words=262144 pattern matches=0/262144 first at +0x0 first_word=0x4F575555) reason=poweron
+#   NEGATIVE: post-cycle-1 window -> 0 matches
+#   POSITIVE: planted pattern -> 262144/262144 (the 17:15:46 line above)
+#
+# ---------------------------------------------------------------------------
+# Protocol note - why every cycle verifies before the cut
+# ---------------------------------------------------------------------------
+# A stand-alone plant WITHOUT a warm-reboot verification showed one
+# non-persisting case after a pin reset during setup:
+[16:49:35.079] CANARY_PLANTED addr=0x48400000 len=1048576 pattern=0xCA4A5EED sram=0x5EC5EC5E
+[16:51:50.283] I (2874) SEEDSIGNER_LOADER: INSPECT Canary 0x48400000: CANARY_REMANENT (non-zero words=262144 first at +0x0 first_word=0xCE57565D) reason=poweron
+#   (pattern NOT found on the following boot). Every warm-reboot-verified cycle
+#   persisted (17:02:09, 17:15:46), so the campaign always establishes the
+#   pre-cut state via fault_restart + inspect + status.
+#
+# Environment notes:
+#  - EN-pin/auto-reset resets also report rst:0x1 (POWERON); verdict validity
+#    rests on the verify-before-cut protocol, not on the reset-reason string.
+#  - The loader repo branch used for this campaign (phase19-power-canary) was
+#    archived and deleted; restore via the two patches in ../loader_changes/.

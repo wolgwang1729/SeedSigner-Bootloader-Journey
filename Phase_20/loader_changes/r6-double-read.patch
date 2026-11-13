@@ -1,0 +1,50 @@
+--- a/main/targets/esp32p4/storage_p4.c
++++ b/main/targets/esp32p4/storage_p4.c
+@@ -5,6 +5,7 @@
+ 
+ #include "esp_log.h"
+ #include "esp_heap_caps.h"
++#include "esp_cpu.h"
+ #include "esp_vfs_fat.h"
+ #include "sdmmc_cmd.h"
+ #include "driver/sdmmc_host.h"
+@@ -125,6 +126,39 @@
+     }
+     fclose(f);
+ 
++    /* Phase 20 R6a: second independent read + compare. The verified copy
++     * is the SECOND one (closest to verify-time — the swap window shrinks
++     * to [2nd-read-complete, unmount]). Any divergence halts fail-closed.
++     * Cost is measured in microseconds below. */
++    uint8_t *psram_buf2 = heap_caps_aligned_alloc(65536, st.st_size, MALLOC_CAP_SPIRAM);
++    if (!psram_buf2) {
++        ESP_LOGE(TAG, "PSRAM alloc failed (2nd read). Halting.");
++        free(psram_buf);
++        unmount_and_power_off(card);
++        return NULL;
++    }
++    int64_t r6_t0 = (int64_t)esp_cpu_get_cycle_count();
++    FILE *f2 = fopen(SD_FIRMWARE_PATH, "rb");
++    size_t r6_n = 0;
++    if (f2) {
++        r6_n = fread(psram_buf2, 1, st.st_size, f2);
++        fclose(f2);
++    }
++    uint32_t r6_cycles = esp_cpu_get_cycle_count() - (uint32_t)r6_t0;
++    int r6_match = (r6_n == st.st_size) &&
++                   (memcmp(psram_buf, psram_buf2, st.st_size) == 0);
++    ESP_LOGI(TAG, "R6 double-read: bytes=%lu read2_cycles=%lu read2_us=%lu match=%d",
++             (unsigned long)st.st_size, (unsigned long)r6_cycles,
++             (unsigned long)(r6_cycles / 360), r6_match);
++    free(psram_buf);
++    if (!r6_match) {
++        ESP_LOGE(TAG, "R6 read mismatch (TOCTOU swap torn). Halting.");
++        free(psram_buf2);
++        unmount_and_power_off(card);
++        return NULL;
++    }
++    psram_buf = psram_buf2;
++
+     ESP_LOGI(TAG, "Unmounting SD card before verification (TOCTOU-safe)...");
+     unmount_and_power_off(card);
+ 

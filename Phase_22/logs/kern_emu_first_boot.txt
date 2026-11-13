@@ -1,0 +1,184 @@
+
+    ╻ ╻ ╻ ╻
+   ┏┻━┻━┻━┻┓    ┏━╸┏━┓┏━┓   ┏━╸┏┳┓╻ ╻
+  ━┫       ┣━   ┣╸ ┗━┓┣━┛╺━╸┣╸ ┃┃┃┃ ┃
+  ━┫ ESP32 ┣━   ┗━╸┗━┛╹     ┗━╸╹ ╹┗━┛
+  ━┫       ┣━
+   ┗┳━┳━┳━┳┛    ESP32 series emulator · v0.49.0
+    ╹ ╹ ╹ ╹     https://github.com/espressif/esp-emulator
+
+[INFO  esp_emu] Loaded firmware: 2166784 bytes
+[INFO  machine] WiFi SoftAP: WPA2/WPA3 transition enabled (PWE Both) for SSID 'myssid'
+[INFO  esp_emu] TAP auto-probe failed (TUNSETIFF failed for 'tap0': Operation not permitted (os error 1)); falling back to --net user
+[INFO  net_user] user-net: DNS forwarder upstream [127.0.0.53:53], restrict=false
+[INFO  net_user] user-net: backend ready (gateway 192.168.4.1, 0 hostfwd rules)
+[INFO  esp_emu] Network backend: user-mode (smoltcp NAT, 192.168.4.1 -> host loopback)
+[INFO  esp_emu] Loaded ROM ELF: /home/wolgwang/.espressif/tools/esp-rom-elfs/20241011/esp32p4_rev0_rom.elf (243316 bytes)
+[INFO  esp_emu] Booting from real ROM reset vector (use --skip-rom to bypass)
+[INFO  machine] ROM ELF: 2083 symbols loaded
+[INFO  machine] ROM ELF loaded, 14 functions patched for interception
+[INFO  esp_emu] Loaded eFuse file: 336 bytes
+[INFO  machine] PSRAM configured as 32768 KB
+[INFO  machine] CPU reset at ROM entry: PC=0x4FC00000, SP=0x4FFBCFC0
+[INFO  esp_emu] Starting emulation (chip=esp32p4, batch_size=50000)
+ESP-ROM:esp32p4-20230811
+Build:Aug 11 2023
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPI mode:DIO, clock div:1
+load:0x4ff33e40,len:0x17e8
+load:0x4ff28ed0,len:0x10bc
+load:0x4ff2bbd0,len:0x37e0
+entry 0x4ff28eda
+W (5) boot.esp32p4: eFuse virtual mode is enabled. If Secure boot or Flash encryption is enabled then it does not provide any security. FOR TESTING ONLY!
+W (5) efuse: [Virtual] Loading virtual efuse blocks from real efuses
+I (6) boot: ESP-IDF v6.1 2nd stage bootloader
+I (6) boot: Multicore bootloader
+I (6) boot: chip revision: v1.3
+I (6) boot: efuse block revision: v0.0
+I (6) qio_mode: Enabling default flash chip QIO
+I (6) boot.esp32p4: SPI Speed      : 80MHz
+I (6) boot.esp32p4: SPI Mode       : QIO
+I (6) boot.esp32p4: SPI Flash Size : 16MB
+I (6) boot: Enabling RNG early entropy source...
+I (7) boot: Partition Table:
+I (7) boot: ## Label            Usage          Type ST Offset   Length
+I (7) boot:  0              nvs        WiFi data 01 02 00011000 0000d000
+I (7) boot:  1          otadata         OTA data 01 00 0001e000 00002000
+I (7) boot:  2            ota_0          OTA app 00 10 00020000 00600000
+I (7) boot:  3            ota_1          OTA app 00 11 00620000 00600000
+I (7) boot:  4          storage     Unknown data 01 82 00c20000 003e0000
+I (7) boot: End of partition table
+I (7) boot: No factory image, trying OTA 0
+I (7) esp_image: segment 0: paddr=00020020 vaddr=48170020 size=5b554h (374100) map
+I (31) esp_image: segment 1: paddr=0007b57c vaddr=30100000 size=000b4h (   180) load
+I (32) esp_image: segment 2: paddr=0007b638 vaddr=4ff00000 size=049e0h ( 18912) load
+I (33) esp_image: segment 3: paddr=00080020 vaddr=48000020 size=16b8e0h (1489120) map
+I (130) esp_image: segment 4: paddr=001eb908 vaddr=4ff049e0 size=11198h ( 70040) load
+I (136) esp_image: segment 5: paddr=001fcaa8 vaddr=4ff15b80 size=07360h ( 29536) load
+I (138) esp_image: segment 6: paddr=00203e10 vaddr=50108080 size=00024h (    36) load
+I (138) esp_image: segment 7: paddr=00203e3c vaddr=00000000 size=0c194h ( 49556) 
+I (146) boot: Loaded app from partition at offset 0x20000
+I (146) boot: Set actual ota_seq=1 in otadata[0]
+I (146) boot: Disabling RNG early entropy source...
+W (146) pmu_pvt: blk_version is less than 2, pvt auto dbias init not supported in efuse.
+I (148) hex_psram: vendor id    : 0x0d (AP)
+I (148) hex_psram: Latency      : 0x01 (Fixed)
+I (148) hex_psram: DriveStr.    : 0x00 (25 Ohm)
+I (148) hex_psram: dev id       : 0x01 (generation 2)
+I (148) hex_psram: density      : 0x07 (256 Mbit)
+I (148) hex_psram: good-die     : 0x06 (Pass)
+I (148) hex_psram: SRF          : 0x00 (Slow Refresh)
+I (148) hex_psram: BurstType    : 0x00 ( Wrap)
+I (148) hex_psram: BurstLen     : 0x03 (2048 Byte)
+I (148) hex_psram: BitMode      : 0x01 (X16 Mode)
+I (148) hex_psram: Readlatency  : 0x04 (14 cycles@Fixed)
+I (148) hex_psram: DriveStrength: 0x00 (1/1)
+I (148) MSPI Timing: Enter psram timing tuning
+I esp_psram: Found 32MB PSRAM device
+I esp_psram: Speed: 200MHz
+I (236) mmu_psram: .rodata xip on psram
+I (248) mmu_psram: .text xip on psram
+I (249) hex_psram: psram CS IO is dedicated
+I (249) cpu_start: Multicore app
+I (370) esp_psram: SPI SRAM memory test OK
+I (340) cpu_start: GPIO 38 and 37 are used as console UART I/O pins
+I (340) cpu_start: Pro cpu start user code
+I (340) cpu_start: cpu freq: 360000000 Hz
+I (340) app_init: Application information:
+I (340) app_init: Project name:     kern
+I (340) app_init: App version:      0.0.20
+I (340) app_init: ELF file SHA256:  f9be10715...
+I (340) app_init: ESP-IDF:          v6.1
+I (340) efuse_init: Min chip rev:     v0.1
+I (340) efuse_init: Max chip rev:     v1.99 
+I (340) efuse_init: Chip rev:         v1.3
+I (340) heap_init: Initializing. RAM available for dynamic allocation:
+I (340) heap_init: At 4FF22DD0 len 000181F0 (96 KiB): RETENT_RAM
+I (340) heap_init: At 4FF3AFC0 len 00004BE4 (18 KiB): RAM
+I (340) heap_init: At 4FF40000 len 00040000 (256 KiB): RAM
+I (340) heap_init: At 501080A4 len 00007F5C (31 KiB): RTCRAM
+I (340) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+I (340) esp_psram: Adding pool of 30912K of PSRAM memory to heap allocator
+I (340) esp_psram: Adding pool of 17K of PSRAM memory gap generated due to end address alignment of irom to the heap allocator
+I (340) esp_psram: Adding pool of 18K of PSRAM memory gap generated due to end address alignment of drom to the heap allocator
+I (340) spi_flash: detected chip: gd
+I (340) spi_flash: flash io: qio
+W (340) efuse_init: eFuse virtual mode is enabled. If Secure boot or Flash encryption is enabled then it does not provide any security. FOR TESTING ONLY!
+W (340) efuse: [Virtual] Loading virtual efuse blocks from real efuses
+W (341) eFuse: calibration efuse version does not match, set default version to 0
+W (341) eFuse: calibration efuse version does not match, set default version to 0
+W (341) eFuse: calibration efuse version does not match, set default version to 0
+W (341) eFuse: calibration efuse version does not match, set default version to 0
+W (341) eFuse: calibration efuse version does not match, set default version to 0
+W (341) eFuse: calibration efuse version does not match, set default version to 0
+W (341) eFuse: calibration efuse version does not match, set default version to 0
+W (341) eFuse: calibration efuse version does not match, set default version to 0
+W (341) eFuse: calibration efuse version does not match, set default version to 0
+W (341) eFuse: calibration efuse version does not match, set default version to 0
+W (342) eFuse: calibration efuse version does not match, set default version to 0
+W (342) eFuse: calibration efuse version does not match, set default version to 0
+W (342) eFuse: calibration efuse version does not match, set default version to 0
+W (342) eFuse: calibration efuse version does not match, set default version to 0
+W (342) eFuse: calibration efuse version does not match, set default version to 0
+W (342) eFuse: calibration efuse version does not match, set default version to 0
+W (342) eFuse: calibration efuse version does not match, set default version to 0
+W (342) eFuse: calibration efuse version does not match, set default version to 0
+W (342) eFuse: calibration efuse version does not match, set default version to 0
+W (343) eFuse: calibration efuse version does not match, set default version to 0
+W (343) eFuse: calibration efuse version does not match, set default version to 0
+W (343) eFuse: calibration efuse version does not match, set default version to 0
+W (343) eFuse: calibration efuse version does not match, set default version to 0
+W (343) eFuse: calibration efuse version does not match, set default version to 0
+W (343) eFuse: calibration efuse version does not match, set default version to 0
+W (343) eFuse: calibration efuse version does not match, set default version to 0
+W (343) eFuse: calibration efuse version does not match, set default version to 0
+W (343) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (344) eFuse: calibration efuse version does not match, set default version to 0
+W (345) eFuse: calibration efuse version does not match, set default version to 0
+W (345) eFuse: calibration efuse version does not match, set default version to 0
+W (345) eFuse: calibration efuse version does not match, set default version to 0
+W (345) eFuse: calibration efuse version does not match, set default version to 0
+W (345) eFuse: calibration efuse version does not match, set default version to 0
+W (345) eFuse: calibration efuse version does not match, set default version to 0
+W (345) eFuse: calibration efuse version does not match, set default version to 0
+W (346) eFuse: calibration efuse version does not match, set default version to 0
+W (346) eFuse: calibration efuse version does not match, set default version to 0
+W (346) eFuse: calibration efuse version does not match, set default version to 0
+W (346) eFuse: calibration efuse version does not match, set default version to 0
+W (346) eFuse: calibration efuse version does not match, set default version to 0
+W (346) eFuse: calibration efuse version does not match, set default version to 0
+W (346) eFuse: calibration efuse version does not match, set default version to 0
+W (347) eFuse: calibration efuse version does not match, set default version to 0
+W (347) eFuse: calibration efuse version does not match, set default version to 0
+W (347) eFuse: calibration efuse version does not match, set default version to 0
+W (347) eFuse: calibration efuse version does not match, set default version to 0
+W (347) eFuse: calibration efuse version does not match, set default version to 0
+W (347) eFuse: calibration efuse version does not match, set default version to 0
+I (347) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (347) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (347) sleep_clock: System sleep clock ICG setting initialization
+I (348) nvs_sec_provider: NVS Encryption - Registering HMAC-based scheme...
+I (349) main_task: Started on CPU0
+I (349) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (350) main_task: Calling app_main()
+I (358) wave_43: ESP32-C6 held in reset
+I (359) esp_lvgl:adapter: LVGL adapter initialized successfully
+W (359) ledc: GPIO 26 is not usable, maybe conflict with others
+I (359) wave_43: MIPI DSI PHY Powered on
+[INFO  esp_emu] Timeout reached after 180.000427478s
+[INFO  esp_emu] eFuse state saved to '/tmp/kern_efuse_p4_rev1.3.bin'

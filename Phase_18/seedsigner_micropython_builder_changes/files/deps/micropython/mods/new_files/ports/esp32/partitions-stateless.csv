@@ -1,0 +1,14 @@
+# Stateless-variant layout for Waveshare ESP32-P4 boards.
+#
+# This table is BUILD-TIME scaffolding only: partition-table.bin is never
+# flashed for stateless (the signed bundle carries just the app image, and at
+# runtime the payload reads the LOADER's table from flash at 0x20000).
+# Blank offsets auto-place every partition AFTER the 0x20000 table sector, so
+# the table never overlaps nvs (the failure mode of the pinned-offset 32MiB
+# table under CONFIG_PARTITION_TABLE_OFFSET=0x20000). Factory keeps the same
+# 12 MB size so app-size checks match the flash builds; coredump is dropped
+# (no flash target exists under stateless).
+# Name,    Type, SubType,  Offset,   Size, Flags
+nvs,      data, nvs,      ,   0x6000,
+phy_init, data, phy,      ,   0x1000,
+factory,  app,  factory,  ,   0xC00000,

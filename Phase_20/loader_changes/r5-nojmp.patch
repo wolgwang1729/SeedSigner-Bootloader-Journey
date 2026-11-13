@@ -1,0 +1,99 @@
+--- a/main/targets/esp32p4/jump_p4.c
++++ b/main/targets/esp32p4/jump_p4.c
+@@ -139,13 +139,17 @@
+     asm volatile ("csrw mie, zero\n");
+     rv_utils_intr_global_disable();
+ 
+-    char m_intr[] = "JMP[3] interrupts off, starting cache eviction\r\n";
++    char m_intr[] = "JMP[3] interrupts off, R5c: eviction SKIPPED\r\n";
+     bootloader_uart0_print(m_intr);
+ 
+-    // Thrash full 64 KB L1 D-cache to force eviction before MMU remap
+-    volatile uint32_t *evict_ptr = evict_buf;
+-    for (int i = 0; i < (65536 / 4); i++) evict_ptr[i] = i;
+-    char m_wb[] = "JMP[4] D-cache evicted\r\n";
++    /* Phase 20 R5c: no-JMP challenger — the 64 KB D-cache eviction passes
++     * are skipped (nothing staged into PSRAM for MMU mapping in the
++     * zero-mapping case; direct SRAM copies read through the cache
++     * coherently). MMU programming + invalidate below are likewise
++     * skipped. Teardown, copies, fence.i, mtvec zeroing, and every
++     * verify/scrub path in main.c are untouched. */
++    (void)evict_buf;
++    char m_wb[] = "JMP[4] D-cache eviction SKIPPED (R5c)\r\n";
+     bootloader_uart0_print(m_wb);
+ 
+     // Copy direct segments into internal SRAM (source is in PSRAM — cache still up)
+@@ -161,64 +165,18 @@
+     char m_nl[] = "\r\n";
+     bootloader_uart0_print(m_nl);
+ 
+-    // Program MMU entries for PSRAM-mapped segments
+-    for (int i = 0; i < safe_mapping_count; i++) {
+-        uint32_t page_size = 65536;
+-        uint32_t page_num  = (safe_mappings[i].len + page_size - 1) / page_size;
+-        uint32_t vaddr     = safe_mappings[i].vaddr;
+-        uint32_t mmu_val   = safe_mappings[i].paddr >> 16;
+-
+-        char m_map[] = "JMP[6] MMU map: vaddr=";
+-        bootloader_uart0_print(m_map);
+-        dbg_print_hex(vaddr);
+-        char m_pa[] = " paddr=";
+-        bootloader_uart0_print(m_pa);
+-        dbg_print_hex(safe_mappings[i].paddr);
+-        char m_pg[] = " pages=";
+-        bootloader_uart0_print(m_pg);
+-        dbg_print_hex(page_num);
+-        bootloader_uart0_print(m_nl);
+-
+-        while (page_num--) {
+-            uint32_t entry_id    = (vaddr & 0x03FFFFFF) >> 16;
+-            uint32_t index_reg   = SPI_MEM_C_MMU_ITEM_INDEX_REG;
+-            uint32_t content_reg = SPI_MEM_C_MMU_ITEM_CONTENT_REG;
+-            uint32_t final_val   = mmu_val | (1 << 10);
+-
+-            if (vaddr >= 0x48000000) {
+-                index_reg   = SPI_MEM_S_MMU_ITEM_INDEX_REG;
+-                content_reg = SPI_MEM_S_MMU_ITEM_CONTENT_REG;
+-                // PSRAM: valid | access | no sensitive (plaintext)
+-                final_val   = mmu_val | (1 << 11) | (1 << 10);
+-            }
+-
+-            char m_ent[] = "  entry=";
+-            bootloader_uart0_print(m_ent);
+-            dbg_print_hex(entry_id);
+-            char m_val[] = " val=";
+-            bootloader_uart0_print(m_val);
+-            dbg_print_hex(final_val);
+-            REG_WRITE(index_reg, entry_id);
+-            REG_WRITE(content_reg, final_val);
+-            char m_ok[] = " OK\r\n";
+-            bootloader_uart0_print(m_ok);
+-
+-            vaddr += page_size;
+-            mmu_val++;
+-        }
+-    }
+-
+-    // Invalidate caches through ROM API
+-    extern void Cache_Invalidate_Addr(uint32_t map, uint32_t vaddr, uint32_t size);
+-    for (int i = 0; i < safe_mapping_count; i++) {
+-        Cache_Invalidate_Addr(0x10, safe_mappings[i].vaddr, safe_mappings[i].len);
+-        Cache_Invalidate_Addr(0x20, safe_mappings[i].vaddr, safe_mappings[i].len);
++    /* Phase 20 R5c: MMU programming + cache invalidate skipped. Any
++     * nonzero mapping count here means the payload NEEDS the MMU and this
++     * challenger must refuse to jump (fail-closed, not fail-weird). */
++    if (safe_mapping_count != 0) {
++        char m_ref[] = "R5c REFUSED: payload needs MMU mappings, use the full JMP path\r\n";
++        bootloader_uart0_print(m_ref);
++        while (1) { }
+     }
++    char m_map[] = "JMP[6] MMU map SKIPPED (R5c, zero mappings)\r\n";
++    bootloader_uart0_print(m_map);
+     asm volatile ("fence.i\n" "fence rw,rw\n");
+ 
+-    // Second D-cache drain pass
+-    for (int i = 0; i < (65536 / 4); i++) evict_ptr[i] = i;
+-
+     // Zero out mtvec so early traps in the payload don't vector to loader ISRs
+     asm volatile ("csrw mtvec, zero\n");
+ 

@@ -1,0 +1,49 @@
+# Phase 22 - Specter-DIY (sandman21vs/specter-diy ESP32-P4 port) stateless
+# handoff prerequisites.
+#
+# The signed MicroPython bundle is executed from PSRAM by the desktop secure
+# loader (Cache-MMU remap + JMP), never through the 2nd-stage bootloader's app
+# path. Appended AFTER sdkconfig.board by mpconfigboard.cmake (gated on
+# -DMICROPY_STATELESS=1), so every line here wins over the flash-firmware
+# configuration.
+#
+# The board file already sets the PSRAM-XIP layout that stateless execution
+# needs (CONFIG_SPIRAM_XIP_FROM_PSRAM, SPIRAM_FETCH_INSTRUCTIONS,
+# SPIRAM_RODATA), so IROM/DROM land at 0x48000000 - the window the loader
+# MMU-maps from PSRAM. Do not remove those; a flash-window image faults in the
+# loader's JMP.
+
+# Single-core: the loader's JMP + shim run the payload on CPU0 only.
+CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE=y
+CONFIG_FREERTOS_UNICORE=y
+
+# Keep memory permissions RWX for the payload.
+CONFIG_ESP_SYSTEM_PMP_IDRAM_SPLIT=n
+
+# Watchdogs/stack-guard off during bring-up (same as the C shim payloads).
+# NOTE: the task WDT stays ON (default): MicroPython's machine.WDT binding
+# links against esp_task_wdt_*_user, which vanish when the task WDT is
+# compiled out (link failure). The WDT only starts with the scheduler, i.e.
+# after the shim's early busy-loops, so it cannot fire there.
+CONFIG_ESP_SYSTEM_HW_STACK_GUARD=n
+
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
+
+# PSRAM is initialised by the loader (esp_psram_init is shim-wrapped); the
+# shim registers the upper 8 MB as the MicroPython heap. Skip the boot-time
+# memtest path entirely.
+CONFIG_SPIRAM_MEMTEST=n
+
+# Match the loader layout: its own partition table lives at 0x20000. The
+# payload table is BUILD-TIME scaffolding only (never flashed - the bundle
+# carries just the app image), so auto-offset partitions are used
+# (partitions-stateless.csv) to avoid overlapping that offset. The absolute
+# CSV path is generated into a second sdkconfig fragment from
+# mpconfigboard.cmake (ESP-IDF resolves relative paths from ports/esp32).
+CONFIG_PARTITION_TABLE_OFFSET=0x20000
+
+# Console: default UART0 at 115200 - the loader's console. The shim keeps the
+# loader's UART configuration and installs only the REPL RX interrupt, so the
+# whole session stays at one baud.
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200

@@ -1,0 +1,10 @@
+
+    config KERN_STATELESS
+        bool "Stateless SD-bundle payload"
+        default n
+        help
+            Build the application for the Phase 22 stateless loader. The app
+            runs from PSRAM with no flash-resident app partition of its own;
+            IDF's esp_ota_get_running_partition() cannot resolve a partition
+            from a PSRAM XIP address, so a small stateless wrapper returns the
+            payload's metadata factory partition instead.

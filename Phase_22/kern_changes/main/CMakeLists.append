@@ -1,0 +1,6 @@
+
+if(CONFIG_KERN_STATELESS)
+    # The stateless payload is not the flash-resident app: its code lives in
+    # PSRAM, so IDF's cache2phys-based OTA lookup cannot identify it.
+    idf_build_set_property(LINK_OPTIONS "-Wl,--wrap=esp_ota_get_running_partition" APPEND)
+endif()

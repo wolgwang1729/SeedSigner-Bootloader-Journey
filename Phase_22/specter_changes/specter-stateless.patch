@@ -1,0 +1,25 @@
+diff --git a/ports/esp32p4/boards/WAVESHARE_P4_43/mpconfigboard.cmake b/ports/esp32p4/boards/WAVESHARE_P4_43/mpconfigboard.cmake
+index 42ddd63..6d2c227 100644
+--- a/ports/esp32p4/boards/WAVESHARE_P4_43/mpconfigboard.cmake
++++ b/ports/esp32p4/boards/WAVESHARE_P4_43/mpconfigboard.cmake
+@@ -25,4 +25,20 @@ set(SDKCONFIG_DEFAULTS
+     ${_P4_PARTITIONS_SDKCONFIG}
+ )
+ 
++# Phase 22 stateless handoff variant (opt-in: -DMICROPY_STATELESS=1).
++#
++# Appended LAST so these defaults win over the flash-firmware configuration
++# above: single-core, PMP split off, the loader's 0x20000 partition-table
++# offset, and a build-time-only partition table with auto offsets. The table
++# path is generated here as an absolute path for the same reason as above.
++if(MICROPY_STATELESS)
++    set(_P4_STATELESS_PARTITIONS_SDKCONFIG ${CMAKE_BINARY_DIR}/sdkconfig.partitions.stateless)
++    file(WRITE ${_P4_STATELESS_PARTITIONS_SDKCONFIG}
++        "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"${CMAKE_CURRENT_LIST_DIR}/partitions-stateless.csv\"\n")
++    list(APPEND SDKCONFIG_DEFAULTS
++        ${CMAKE_CURRENT_LIST_DIR}/sdkconfig.stateless
++        ${_P4_STATELESS_PARTITIONS_SDKCONFIG}
++    )
++endif()
++
+ set(MICROPY_FROZEN_MANIFEST ${CMAKE_CURRENT_LIST_DIR}/manifest.py)

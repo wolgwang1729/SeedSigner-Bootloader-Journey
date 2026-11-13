@@ -1,0 +1,12 @@
+
+[driver] synced, transcript: /home/wolgwang/Desktop/SoB/Phase_20/logs/exp_r0-baseline_20261016_154544.log
+> 
+[driver] >>> status
+STATUS scrub=on magic=0x00000000 psram[0]=0x00000000 psram[1]=0x00000000 psram_xor=0x00000000 sram[0]=0x00000000 sram_nonzero=0 fired=2374261198 cycles=2570348213
+> 
+[driver] --- chunk end ---
+
+[driver] >>> selftest
+SELFTEST_OK
+> 
+[driver] --- chunk end ---

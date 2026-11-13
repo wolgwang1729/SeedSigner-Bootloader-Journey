@@ -1,0 +1,11 @@
+SYNC: idle board unresponsive - esptool hard reset
+
+[driver] synced, transcript: /home/wolgwang/Desktop/SoB/Phase_20/logs/exp_r0-baseline_20261016_154448.log
+
+[driver] >>> status
+
+[driver] --- chunk end ---
+
+[driver] >>> selftest
+
+[driver] --- chunk end ---

@@ -1,0 +1,116 @@
+diff --git a/main/main.c b/main/main.c
+index 43199b9..55077c6 100644
+--- a/main/main.c
++++ b/main/main.c
+@@ -73,6 +73,11 @@ static void halt_and_scrub(uint8_t *psram_buf, size_t fw_size,
+ // Reads the fixed canary window with a constant-time volatile word loop
+ // (no memcmp), logs REMANENT vs CLEARED, zeroes the local read buffer,
+ // clears the RTC test flag, and returns. Normal boots skip the read.
++//
++// Canary-phase follow-up (TEST BUILD ONLY): cold power-cycle branch.
++// A full power loss kills the RTC test magic, so POWERON (rail collapse)
++// and BROWNOUT (blip) boots inspect unconditionally. The Phase 19 warm
++// gate is unchanged (magic still required there).
+ // ---------------------------------------------------------------------------
+ #if CONFIG_IDF_TARGET_ESP32P4
+ #define TEST_MAGIC_ADDR ((volatile uint32_t *)0x5010FFF0)
+@@ -86,18 +91,46 @@ static void halt_and_scrub(uint8_t *psram_buf, size_t fw_size,
+ // property with bounded stack while covering the 1 MB window.
+ #define INSPECT_CHUNK 256
+ 
++// Cold-boot settle (ms): the verdict prints once per boot and the host CDC
++// endpoint may not be enumerated yet right after a power cut; a short wait
++// makes the capture reliable. Does not change WHAT is read — the canary
++// state was frozen at power-off and nothing writes the window pre-inspect.
++#define COLD_INSPECT_SETTLE_MS 2000
++
++static const char *reset_reason_name(esp_reset_reason_t r)
++{
++    switch (r) {
++    case ESP_RST_POWERON:   return "poweron";
++    case ESP_RST_BROWNOUT:  return "brownout";
++    case ESP_RST_SW:        return "sw";
++    case ESP_RST_PANIC:     return "panic";
++    case ESP_RST_INT_WDT:   return "int_wdt";
++    case ESP_RST_TASK_WDT:  return "task_wdt";
++    case ESP_RST_WDT:       return "wdt";
++    case ESP_RST_DEEPSLEEP: return "deepsleep";
++    case ESP_RST_EXT:       return "ext";
++    default:                return "other";
++    }
++}
++
+ static void inspect_canary_early(void)
+ {
+     esp_reset_reason_t reason = esp_reset_reason();
+     int warm = (reason == ESP_RST_SW || reason == ESP_RST_PANIC ||
+                 reason == ESP_RST_INT_WDT || reason == ESP_RST_TASK_WDT ||
+                 reason == ESP_RST_WDT);
+-    if (!warm) {
++    // Cold branch: the RTC test magic died with the rail, so the reset
++    // reason itself is the gate (test build only).
++    int cold = (reason == ESP_RST_POWERON || reason == ESP_RST_BROWNOUT);
++    if (!warm && !cold) {
+         return;
+     }
++    if (cold) {
++        vTaskDelay(pdMS_TO_TICKS(COLD_INSPECT_SETTLE_MS));
++    }
+     volatile uint32_t *magic = TEST_MAGIC_ADDR;
+     uint32_t m = *magic;
+-    if (m != RTC_TEST_MAGIC) {
++    if (warm && m != RTC_TEST_MAGIC) {
+         return;
+     }
+ 
+@@ -109,11 +142,15 @@ static void inspect_canary_early(void)
+     const size_t words = CANARY_LEN / 4;
+     uint8_t chunk[INSPECT_CHUNK];
+     uint32_t nonzero = 0;
++    uint32_t matches = 0;
+     uint32_t first_off = 0;
+     uint32_t first_word = 0;
+     int have_first = 0;
+     for (size_t i = 0; i < words; i++) {
+         uint32_t w = canary[i];
++        if (w == (CANARY_PATTERN32 ^ (uint32_t)i)) {
++            matches++;
++        }
+         // Fold into the cyclic chunk byte-wise (evidence handling).
+         chunk[(i * 4 + 0) % INSPECT_CHUNK] = (uint8_t)(w & 0xFF);
+         chunk[(i * 4 + 1) % INSPECT_CHUNK] = (uint8_t)((w >> 8) & 0xFF);
+@@ -132,18 +169,28 @@ static void inspect_canary_early(void)
+         }
+     }
+     if (nonzero == 0) {
+-        ESP_LOGI(TAG, "INSPECT Canary 0x%08lX: CANARY_CLEARED (%d/%d zero)",
+-                 (unsigned long)CANARY_PADDR, (int)CANARY_LEN, (int)CANARY_LEN);
++        ESP_LOGI(TAG, "INSPECT Canary 0x%08lX: CANARY_CLEARED (%d/%d zero) "
++                      "reason=%s",
++                 (unsigned long)CANARY_PADDR, (int)CANARY_LEN, (int)CANARY_LEN,
++                 reset_reason_name(reason));
+     } else {
+         ESP_LOGI(TAG, "INSPECT Canary 0x%08lX: CANARY_REMANENT "
+-                      "(non-zero words=%lu first at +0x%lX first_word=0x%08lX)",
++                      "(non-zero words=%lu pattern matches=%lu/%lu "
++                      "first at +0x%lX first_word=0x%08lX) "
++                      "reason=%s",
+                  (unsigned long)CANARY_PADDR, (unsigned long)nonzero,
++                 (unsigned long)matches, (unsigned long)words,
+                  (unsigned long)first_off,
+-                 (unsigned long)first_word);
++                 (unsigned long)first_word,
++                 reset_reason_name(reason));
+     }
+-    // Zero the chunk (G4) and clear the test flag so normal boots skip.
++    // Zero the chunk (G4) and, on warm boots, clear the test flag so normal
++    // boots skip. On cold boots there is nothing to clear: the RTC magic
++    // died with the rail.
+     memzero(chunk, sizeof(chunk));
+-    *magic = 0;
++    if (warm) {
++        *magic = 0;
++    }
+ }
+ 
+ // ---------------------------------------------------------------------------

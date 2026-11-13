@@ -1,0 +1,16 @@
+# Phase 22 stateless layout for the Specter-DIY P4 payload.
+#
+# BUILD-TIME scaffolding only: partition-table.bin is never flashed (the signed
+# bundle carries just the app image, and at runtime any esp_partition lookup
+# reads the LOADER's table at 0x20000). Blank offsets auto-place every
+# partition AFTER the 0x20000 table sector, so the table never overlaps nvs
+# (the failure mode of the board's pinned 0x10000 factory offset under
+# CONFIG_PARTITION_TABLE_OFFSET=0x20000).
+#
+# The 12 MB factory size is larger than the sandman firmware (~2.3 MB) on
+# purpose: it keeps the image-size check permissive while making clear that
+# this app partition is never populated in flash.
+# Name,    Type, SubType,  Offset,   Size, Flags
+nvs,      data, nvs,      ,   0x6000,
+phy_init, data, phy,      ,   0x1000,
+factory,  app,  factory,  ,   0xC00000,

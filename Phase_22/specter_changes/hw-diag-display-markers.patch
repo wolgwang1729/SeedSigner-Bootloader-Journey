@@ -1,0 +1,109 @@
+From: Phase 22 hardware bring-up
+Subject: [PATCH] p4board display.c: P22-DIAG step markers (+ optional ST7701 skip)
+
+Hardware diagnostic overlay for the sandman21vs/specter-diy P4 port
+(`ports/esp32p4/components/p4board/display.c`, pristine at f54e345).
+
+Why: a headless devkit has no 4.3" MIPI-DSI panel. The stock payload runs
+`p4board_display_init()` from the frozen `main.py` and blocks somewhere before
+the success log; with `CONFIG_LOG_DEFAULT_LEVEL=ERROR` only `ESP_LOGE` is
+visible, so the markers below are emitted with `ESP_LOGE` and pinpoint the
+blocking step. The second part (`SKIP_ST7701`) is a separate experiment: it
+skips the ST7701 command sequence so the rest of the app can be exercised
+without the panel. Keep both hunks for the full diagnostic, or drop the first
+hunk of the patch (the `send_st7701_init` early return) for marker-only runs.
+
+The production payload and the committed `bundle_specter.bin` do not carry
+this patch.
+
+--- a/ports/esp32p4/components/p4board/display.c
++++ b/ports/esp32p4/components/p4board/display.c
+@@ -234,6 +234,8 @@
+ }
+ 
+ static esp_err_t send_st7701_init(void) {
++    ESP_LOGE(TAG, "[P22-DIAG] SKIP_ST7701: no panel attached, skipping command sequence");
++    return ESP_OK;
+     for (size_t index = 0; index < ARRAY_SIZE(st7701_init_commands); ++index) {
+         const st7701_init_command_t *item = &st7701_init_commands[index];
+         esp_err_t result = esp_lcd_panel_io_tx_param(panel_io, item->command,
+@@ -253,6 +255,7 @@
+         return ESP_OK;
+     }
+     display_timeout_reported = false;
++    ESP_LOGE(TAG, "[P22-DIAG] display init start");
+     esp_err_t result = init_backlight();
+     if (result == ESP_OK) {
+         result = p4board_backlight(0);
+@@ -260,6 +263,7 @@
+     if (result != ESP_OK) {
+         goto fail;
+     }
++    ESP_LOGE(TAG, "[P22-DIAG] backlight ok");
+ 
+     esp_ldo_channel_config_t ldo_config = {
+         .chan_id = P4BOARD_LCD_DSI_LDO_CHANNEL,
+@@ -268,6 +272,7 @@
+     if ((result = esp_ldo_acquire_channel(&ldo_config, &dsi_ldo)) != ESP_OK) {
+         goto fail;
+     }
++    ESP_LOGE(TAG, "[P22-DIAG] dsi ldo acquired");
+ 
+     esp_lcd_dsi_bus_config_t bus_config = {
+         .bus_id = 0,
+@@ -278,6 +283,7 @@
+     if ((result = esp_lcd_new_dsi_bus(&bus_config, &dsi_bus)) != ESP_OK) {
+         goto fail;
+     }
++    ESP_LOGE(TAG, "[P22-DIAG] dsi bus ok");
+ 
+     esp_lcd_dbi_io_config_t io_config = {
+         .virtual_channel = 0,
+@@ -287,6 +293,7 @@
+     if ((result = esp_lcd_new_panel_io_dbi(dsi_bus, &io_config, &panel_io)) != ESP_OK) {
+         goto fail;
+     }
++    ESP_LOGE(TAG, "[P22-DIAG] dbi io ok");
+ 
+     esp_lcd_dpi_panel_config_t panel_config = {
+         .virtual_channel = 0,
+@@ -320,6 +327,7 @@
+     if ((result = esp_lcd_new_panel_dpi(dsi_bus, &panel_config, &dpi_panel)) != ESP_OK) {
+         goto fail;
+     }
++    ESP_LOGE(TAG, "[P22-DIAG] dpi panel ok");
+ 
+     const esp_lcd_dpi_panel_event_callbacks_t display_callbacks = {
+         .on_frame_buf_complete = display_on_frame_complete,
+@@ -328,16 +336,27 @@
+         &display_callbacks, NULL)) != ESP_OK) {
+         goto fail;
+     }
++    ESP_LOGE(TAG, "[P22-DIAG] callbacks ok");
+ 
+     void *framebuffer0 = NULL;
+     void *framebuffer1 = NULL;
+-    if ((result = reset_lcd()) != ESP_OK ||
+-        (result = send_st7701_init()) != ESP_OK ||
+-        (result = esp_lcd_panel_init(dpi_panel)) != ESP_OK ||
+-        (result = esp_lcd_dpi_panel_get_frame_buffer(dpi_panel, 2,
++    if ((result = reset_lcd()) != ESP_OK) {
++        goto fail;
++    }
++    ESP_LOGE(TAG, "[P22-DIAG] reset_lcd ok");
++    if ((result = send_st7701_init()) != ESP_OK) {
++        goto fail;
++    }
++    ESP_LOGE(TAG, "[P22-DIAG] st7701 init ok");
++    if ((result = esp_lcd_panel_init(dpi_panel)) != ESP_OK) {
++        goto fail;
++    }
++    ESP_LOGE(TAG, "[P22-DIAG] panel init ok");
++    if ((result = esp_lcd_dpi_panel_get_frame_buffer(dpi_panel, 2,
+             &framebuffer0, &framebuffer1)) != ESP_OK) {
+         goto fail;
+     }
++    ESP_LOGE(TAG, "[P22-DIAG] frame buffers ok");
+ 
+     lcd_framebuffers[0] = framebuffer0;
+     lcd_framebuffers[1] = framebuffer1;

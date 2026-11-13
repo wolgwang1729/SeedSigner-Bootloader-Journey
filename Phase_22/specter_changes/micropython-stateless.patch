@@ -1,0 +1,99 @@
+diff --git a/ports/esp32/esp32_partition.c b/ports/esp32/esp32_partition.c
+index f33e9da67..9cf4c0297 100644
+--- a/ports/esp32/esp32_partition.c
++++ b/ports/esp32/esp32_partition.c
+@@ -118,6 +118,13 @@ static mp_obj_t esp32_partition_make_new(const mp_obj_type_t *type, size_t n_arg
+         }
+     }
+ 
++    // Stateless execution has no flash running partition (the shim's
++    // esp_ota_get_running_partition stub returns NULL instead of aborting);
++    // surface that as OSError, never a crash.
++    if (part == NULL) {
++        mp_raise_OSError(MP_ENOENT);
++    }
++
+     // Get block size if given
+     uint16_t block_size = NATIVE_BLOCK_SIZE_BYTES;
+     if (n_args == 2) {
+diff --git a/ports/esp32/main.c b/ports/esp32/main.c
+index 510ad6b7a..48665a00a 100644
+--- a/ports/esp32/main.c
++++ b/ports/esp32/main.c
+@@ -152,8 +152,10 @@ soft_reset:
+ 
+     // Run optional frozen boot code.
+     #ifdef MICROPY_BOARD_FROZEN_BOOT_FILE
++    #ifndef CONFIG_STATELESS_PSARAM_EXECUTION
+     pyexec_frozen_module(MICROPY_BOARD_FROZEN_BOOT_FILE, false);
+     #endif
++    #endif
+ 
+     int ret = pyexec_file_if_exists("boot.py");
+ 
+diff --git a/ports/esp32/uart.c b/ports/esp32/uart.c
+index 6e00fa3aa..e03fbab37 100644
+--- a/ports/esp32/uart.c
++++ b/ports/esp32/uart.c
+@@ -38,7 +38,7 @@
+ #include "hal/uart_hal.h"
+ #include "soc/uart_periph.h"
+ 
+-static void uart_irq_handler(void *arg);
++void uart_irq_handler(void *arg);
+ 
+ #if CONFIG_IDF_TARGET_ESP32P4
+ static uint8_t __DECLARE_RCC_ATOMIC_ENV __attribute__ ((unused));
+@@ -100,7 +100,7 @@ int uart_stdout_tx_strn(const char *str, size_t len) {
+ }
+ 
+ // all code executed in ISR must be in IRAM, and any const data must be in DRAM
+-static void IRAM_ATTR uart_irq_handler(void *arg) {
++void IRAM_ATTR uart_irq_handler(void *arg) {
+     uint8_t rbuf[SOC_UART_FIFO_LEN];
+     int len;
+     uart_hal_context_t repl_hal = REPL_HAL_DEFN();
+diff --git a/py/makeqstrdefs.py b/py/makeqstrdefs.py
+index e1046fa2b..626db606a 100644
+--- a/py/makeqstrdefs.py
++++ b/py/makeqstrdefs.py
+@@ -39,6 +39,14 @@ def is_cxx_source(fname):
+ 
+ 
+ def preprocess():
++    # A single @file argument is a response file with one source path per line.
++    # The CMake build uses this to keep the makeqstrdefs.py command line below
++    # the OS limit (MAX_ARG_STRLEN) when large usermods add thousands of
++    # sources (e.g. LVGL).
++    if len(args.sources) == 1 and args.sources[0].startswith("@"):
++        with open(args.sources[0][1:], "r", encoding="utf-8") as f:
++            args.sources = [line.strip() for line in f if line.strip()]
++
+     if any(src in args.dependencies for src in args.changed_sources):
+         sources = args.sources
+     elif any(args.changed_sources):
+diff --git a/py/mkrules.cmake b/py/mkrules.cmake
+index 0903f81d8..4f85e75a8 100644
+--- a/py/mkrules.cmake
++++ b/py/mkrules.cmake
+@@ -122,11 +122,19 @@ add_custom_target(
+ # If any of the dependencies in this rule change then the C-preprocessor step must be run.
+ # It only needs to be passed the list of MICROPY_SOURCE_QSTR files that have changed since
+ # it was last run, but it looks like it's not possible to specify that with cmake.
++# Pass the source list through a response file: with large usermods (LVGL has
++# >2000 sources) the expanded command line exceeds Linux's MAX_ARG_STRLEN
++# (128 KB), so the shell fails with E2BIG before makeqstrdefs.py runs.
++set(MICROPY_QSTR_SOURCES_LIST ${CMAKE_CURRENT_BINARY_DIR}/qstr_sources.txt)
++file(GENERATE OUTPUT ${MICROPY_QSTR_SOURCES_LIST}
++    CONTENT "$<JOIN:${MICROPY_SOURCE_QSTR},\n>\n")
++
+ add_custom_command(
+     OUTPUT ${MICROPY_QSTRDEFS_LAST}
+-    COMMAND ${Python3_EXECUTABLE} ${MICROPY_PY_DIR}/makeqstrdefs.py pp ${CMAKE_C_COMPILER} -E output ${MICROPY_GENHDR_DIR}/qstr.i.last cflags ${MICROPY_CPP_FLAGS} -DNO_QSTR cxxflags ${MICROPY_CPP_FLAGS} -DNO_QSTR sources ${MICROPY_SOURCE_QSTR}
++    COMMAND ${Python3_EXECUTABLE} ${MICROPY_PY_DIR}/makeqstrdefs.py pp ${CMAKE_C_COMPILER} -E output ${MICROPY_GENHDR_DIR}/qstr.i.last cflags ${MICROPY_CPP_FLAGS} -DNO_QSTR cxxflags ${MICROPY_CPP_FLAGS} -DNO_QSTR sources @${MICROPY_QSTR_SOURCES_LIST}
+     DEPENDS ${MICROPY_MPVERSION}
+         ${MICROPY_SOURCE_QSTR}
++        ${MICROPY_QSTR_SOURCES_LIST}
+     VERBATIM
+     COMMAND_EXPAND_LISTS
+ )

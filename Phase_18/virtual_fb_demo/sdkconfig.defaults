@@ -1,0 +1,27 @@
+CONFIG_IDF_TARGET="esp32p4"
+# Our DEV-KIT is v1.3 silicon; IDF v5.5 defaults to v3+.
+CONFIG_ESP32P4_SELECTS_REV_LESS_V3=y
+
+# PSRAM as heap (normal flash-exec app; no XIP needed for this demo).
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_USE_MALLOC=y
+CONFIG_SPIRAM_MEMTEST=n
+
+# Keep it single-core like the stateless demos: fewer variables headless.
+CONFIG_ESP_SYSTEM_SINGLE_CORE_MODE=y
+CONFIG_FREERTOS_UNICORE=y
+
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
+
+# Long SD filenames (seedsigner_esp32p4.bin style).
+CONFIG_FATFS_LFN_HEAP=y
+
+# Console mirror screen uses the UNSCII-8 perfect-monospace LVGL font.
+CONFIG_LV_FONT_UNSCII_8=y
+
+# Console UART via GPIO 37/38 -> bridge chip -> /dev/ttyACM0
+CONFIG_ESP_CONSOLE_UART=y
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200

@@ -1,0 +1,55 @@
+From: Phase 22 hardware bring-up
+Subject: [PATCH] src/main.py: temporary P22-DIAG progress prints + specter.start probe
+
+Hardware diagnostic overlay for the Specter-DIY P4 port.
+
+Why: the app's `CONFIG_LOG_DEFAULT_LEVEL` is ERROR, so the `ESP_LOGI`
+"ST7701 ... active" / "LVGL on ..." success lines in `p4board_display_init()`
+and `tft_init()` are suppressed and cannot prove whether display init returned
+on the headless devkit. These `print()` markers go straight to UART and bracket
+`display.init(False)`, `mount_sdram()` and `specter.start()`. The try/except
+around `specter.start()` is a red herring guard: the app catches its own
+exceptions in `Specter.handle_exception()` (`print(e)` at `src/specter.py:150`),
+so nothing propagates here; the ENODEV line in the log comes from that handler,
+not from this one.
+
+Apply on top of `specter-stateless.patch` (it does not touch `src/main.py`).
+Build with the usual idf.py invocation (or re-run the emu script with
+`RUN_EMU=0` and apply this patch in a scratch copy). Not part of the shipped
+stateless payload: the final bundle on the card stays the unmodified build.
+
+--- a/src/main.py
++++ b/src/main.py
+@@ -38,10 +38,13 @@
+     keystores: list of KeyStore classes that can be used
+     """
+     # Init display first as it also inits the SDRAM
++    print("[P22-DIAG] main: calling display.init")
+     display.init(False)
++    print("[P22-DIAG] main: display.init returned")
+     # create virtual file system /sdram
+     # for temp untrusted data storage
+     rampath = platform.mount_sdram()
++    print("[P22-DIAG] main: sdram mounted")
+ 
+     # set working path to empty folder in sdram
+     if not platform.simulator:
+@@ -102,7 +105,17 @@
+         settings_path=settings_path,
+         network=network,
+     )
+-    specter.start()
++    print("[P22-DIAG] main: starting Specter GUI")
++    try:
++        specter.start()
++    except Exception as e:
++        import sys
++
++        print("[P22-DIAG] main: specter.start raised:")
++        sys.print_exception(e)
++        print("[P22-DIAG] main: re-raising")
++        raise
++    print("[P22-DIAG] main: specter.start returned")
+ 
+ 
+ if __name__ == "__main__":

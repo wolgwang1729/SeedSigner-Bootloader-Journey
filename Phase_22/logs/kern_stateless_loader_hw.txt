@@ -1,0 +1,292 @@
+Executing action: monitor
+Running idf_monitor in directory /tmp/phase22_hw_loader
+Executing "/home/wolgwang/.espressif/python_env/idf5.5_py3.12_env/bin/python /home/wolgwang/esp/esp-idf-v5.5/tools/idf_monitor.py -p /dev/ttyACM0 -b 115200 --toolchain-prefix riscv32-esp-elf- --target esp32p4 --revision 0 --decode-panic backtrace /tmp/phase22_hw_loader/build-hw/seedsigner_secure_loader.elf /tmp/phase22_hw_loader/build-hw/bootloader/bootloader.elf -m '/home/wolgwang/.espressif/python_env/idf5.5_py3.12_env/bin/python' '/home/wolgwang/esp/esp-idf-v5.5/tools/idf.py' '-B' 'build-hw' '-p' '/dev/ttyACM0'"...
+--- esp-idf-monitor 1.9.0 on /dev/ttyACM0 115200
+--- Quit: Ctrl+] | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H
+ESP-ROM:esp32p4-eco2-20240710
+Build:Jul 10 2024
+rst:0x1 (POWERON),boot:0x30f (SPI_FAST_FLASH_BOOT)
+SPI mode:DIO, clock div:2
+load:0x4ff33fb0,len:0x3004
+load:0x4ff29ed0,len:0xe84
+--- 0x4ff29ed0: esp_bootloader_get_description at /home/wolgwang/esp/esp-idf-v5.5/components/esp_bootloader_format/esp_bootloader_desc.c:39
+load:0x4ff2cbd0,len:0x5c90
+--- 0x4ff2cbd0: esp_flash_encryption_enabled at /home/wolgwang/esp/esp-idf-v5.5/components/bootloader_support/src/flash_encrypt.c:95
+entry 0x4ff29eda
+--- 0x4ff29eda: call_start_cpu0 at /home/wolgwang/esp/esp-idf-v5.5/components/bootloader/subproject/main/bootloader_start.c:27
+W (33) boot.esp32p4: eFuse virtual mode is enabled. If Secure boot or Flash encryption is enabled then it does not provide any security. FOR TESTING ONLY!
+I (49) boot: ESP-IDF ac63a927 2nd stage bootloader
+I (50) boot: compile time Oct 19 2026 21:54:00
+W (50) boot: Unicore bootloader
+I (52) boot: chip revision: v1.3
+I (53) boot: efuse block revision: v0.3
+I (56) boot.esp32p4: SPI Speed      : 40MHz
+I (60) boot.esp32p4: SPI Mode       : DIO
+I (64) boot.esp32p4: SPI Flash Size : 8MB
+I (68) boot: Enabling RNG early entropy source...
+I (72) boot: Partition Table:
+I (75) boot: ## Label            Usage          Type ST Offset   Length
+I (81) boot:  0 nvs              Unknown data     01 99 00021000 00006000
+I (88) boot:  1 phy_init         RF data          01 01 00027000 00001000
+W (94) efuse: [Virtual] try loading efuses from flash: 0x28000 (offset)
+W (101) efuse: [Virtual] Loading virtual efuse blocks from flash
+EFUSE_BLKx:
+0) 00800101 000f0200 09c00000 00100000 00000022 00000000 
+1) 0ae0ec44 0000e8f6 ae054313 98104b99 d1b6010c 00000218 
+2) 78f83b39 38e58155 ef71dae8 5c2b1488 23b8ea35 59123f90 4a2192e4 0084e198 
+3) 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+4) 3fae46ba b8c35790 d5545081 4594085c 0fdd8040 ddb2b203 655fcc02 3793fc52 
+5) 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+6) 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+7) 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+8) 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+9) 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+10) 62587a2d 88888888 88888888 00000003 00000000 00000000 00000000 00000000 
+
+I (178) boot:  2 efuse            efuse            01 05 00028000 00002000
+I (185) boot:  3 factory          factory app      00 00 00030000 00200000
+I (191) boot:  4 random_fill      Unknown data     01 06 00230000 005d0000
+I (199) boot: End of partition table
+I (201) esp_image: segment 0: paddr=00030020 vaddr=40040020 size=157c4h ( 88004) map
+I (229) esp_image: segment 1: paddr=000457ec vaddr=30100000 size=00070h (   112) load
+I (230) esp_image: segment 2: paddr=00045864 vaddr=4ff40000 size=0a7b4h ( 42932) load
+I (244) esp_image: segment 3: paddr=00050020 vaddr=40000020 size=3483ch (215100) map
+I (291) esp_image: segment 4: paddr=00084864 vaddr=4ff4a7b4 size=03a40h ( 14912) load
+I (296) esp_image: segment 5: paddr=000882ac vaddr=4ff4e200 size=04ff8h ( 20472) load
+I (303) esp_image: segment 6: paddr=0008d2ac vaddr=50108018 size=00754h (  1876) load
+I (305) esp_image: segment 7: paddr=0008da08 vaddr=00000000 size=025c8h (  9672) 
+I (313) esp_image: Verifying image signature...
+I (315) secure_boot_v2: Verifying with RSA-PSS...
+I (333) secure_boot_v2: Signature verified successfully!
+I (338) boot: Loaded app from partition at offset 0x30000
+I (338) secure_boot_v2: enabling secure boot v2...
+I (338) secure_boot_v2: secure boot v2 is already enabled, continuing..
+I (343) boot: Disabling RNG early entropy source...
+I (361) hex_psram: vendor id    : 0x0d (AP)
+I (361) hex_psram: Latency      : 0x01 (Fixed)
+I (361) hex_psram: DriveStr.    : 0x00 (25 Ohm)
+I (362) hex_psram: dev id       : 0x03 (generation 4)
+I (367) hex_psram: density      : 0x07 (256 Mbit)
+I (371) hex_psram: good-die     : 0x06 (Pass)
+I (375) hex_psram: SRF          : 0x02 (Slow Refresh)
+I (380) hex_psram: BurstType    : 0x00 ( Wrap)
+I (384) hex_psram: BurstLen     : 0x03 (2048 Byte)
+I (389) hex_psram: BitMode      : 0x01 (X16 Mode)
+I (393) hex_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (398) hex_psram: DriveStrength: 0x00 (1/1)
+I (402) MSPI Timing: Enter psram timing tuning
+I (578) esp_psram: Found 32MB PSRAM device
+I (578) esp_psram: Speed: 80MHz
+I (579) hex_psram: psram CS IO is dedicated
+I (579) cpu_start: Unicore app
+I (580) cpu_start: Single core mode
+I (1852) esp_psram: SPI SRAM memory test OK
+I (1863) cpu_start: GPIO 38 and 37 are used as console UART I/O pins
+I (1863) cpu_start: Pro cpu start user code
+I (1863) cpu_start: cpu freq: 360000000 Hz
+I (1865) app_init: Application information:
+I (1869) app_init: Project name:     seedsigner_secure_loader
+I (1875) app_init: App version:      1
+I (1878) app_init: Compile time:     Oct 19 2026 21:54:52
+I (1883) app_init: ELF file SHA256:  6c7c121bc...
+I (1888) app_init: ESP-IDF:          ac63a927
+I (1892) efuse_init: Min chip rev:     v0.0
+I (1896) efuse_init: Max chip rev:     v1.99 
+I (1900) efuse_init: Chip rev:         v1.3
+I (1904) heap_init: Initializing. RAM available for dynamic allocation:
+I (1910) heap_init: At 4FF00000 len 0003AFC0 (235 KiB): RETENT_RAM
+I (1916) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (1921) heap_init: At 4FF9D800 len 00002800 (10 KiB): RAM
+I (1927) heap_init: At 5010876C len 00007894 (30 KiB): RTCRAM
+I (1932) heap_init: At 30100070 len 00001F90 (7 KiB): SPM
+I (1937) esp_psram: Adding pool of 32768K of PSRAM memory to heap allocator
+I (1945) spi_flash: detected chip: gd
+I (1947) spi_flash: flash io: dio
+W (1950) spi_flash: Detected size(16384k) larger than the size in the binary image header(8192k). Using the size in the binary image header.
+W (1962) efuse_init: eFuse virtual mode is enabled. If Secure boot or Flash encryption is enabled then it does not provide any security. FOR TESTING ONLY!
+W (1977) efuse: [Virtual] try loading efuses from flash: 0x28000 (offset)
+W (1983) efuse: [Virtual] Loading virtual efuse blocks from flash
+EFUSE_BLKx:
+0) 00800101 000f0200 09c00000 00100000 00000022 00000000 
+1) 0ae0ec44 0000e8f6 ae054313 98104b99 d1b6010c 00000218 
+2) 78f83b39 38e58155 ef71dae8 5c2b1488 23b8ea35 59123f90 4a2192e4 0084e198 
+3) 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+4) 3fae46ba b8c35790 d5545081 4594085c 0fdd8040 ddb2b203 655fcc02 3793fc52 
+5) 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+6) 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+7) 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+8) 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+9) 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000 
+10) 62587a2d 88888888 88888888 00000003 00000000 00000000 00000000 00000000 
+
+I (2060) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (2067) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (2073) main_task: Started on CPU0
+I (2073) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (2083) main_task: Calling app_main()
+I (2083) SEEDSIGNER_LOADER: Stateless loader ready (default platform: seedsigner_esp32p4)
+W (2093) ldo: The voltage value 0 is out of the recommended range [500, 2700]
+I (2143) SEEDSIGNER_LOADER: SD card mounted at /sdcard
+I (3023) SEEDSIGNER_LOADER: Unmounting SD card before verification (TOCTOU-safe)...
+I (3023) SEEDSIGNER_LOADER: Loaded 1937456 bytes from /sdcard/seedsigner_esp32p4.bin
+I (3023) SEEDSIGNER_LOADER: Specter bootloader section detected
+I (3033) SEEDSIGNER_LOADER: Platform accepted: kern_esp32p4
+I (3033) SEEDSIGNER_LOADER: Firmware version: 1
+I (3533) SEEDSIGNER_LOADER: Performing secp256k1 multisig verification...
+I (3563) SEEDSIGNER_LOADER: Signature verification PASSED!
+I (3563) anti_phish: Verifying hash 0 / 6094848 bytes...
+I (3673) anti_phish: Verifying hash 262144 / 6094848 bytes...
+I (3783) anti_phish: Verifying hash 524288 / 6094848 bytes...
+I (3893) anti_phish: Verifying hash 786432 / 6094848 bytes...
+I (4003) anti_phish: Verifying hash 1048576 / 6094848 bytes...
+I (4113) anti_phish: Verifying hash 1310720 / 6094848 bytes...
+I (4223) anti_phish: Verifying hash 1572864 / 6094848 bytes...
+I (4333) anti_phish: Verifying hash 1835008 / 6094848 bytes...
+I (4443) anti_phish: Verifying hash 2097152 / 6094848 bytes...
+I (4553) anti_phish: Verifying hash 2359296 / 6094848 bytes...
+I (4663) anti_phish: Verifying hash 2621440 / 6094848 bytes...
+I (4773) anti_phish: Verifying hash 2883584 / 6094848 bytes...
+I (4883) anti_phish: Verifying hash 3145728 / 6094848 bytes...
+I (4993) anti_phish: Verifying hash 3407872 / 6094848 bytes...
+I (5103) anti_phish: Verifying hash 3670016 / 6094848 bytes...
+I (5213) anti_phish: Verifying hash 3932160 / 6094848 bytes...
+I (5323) anti_phish: Verifying hash 4194304 / 6094848 bytes...
+I (5433) anti_phish: Verifying hash 4456448 / 6094848 bytes...
+I (5543) anti_phish: Verifying hash 4718592 / 6094848 bytes...
+I (5653) anti_phish: Verifying hash 4980736 / 6094848 bytes...
+I (5763) anti_phish: Verifying hash 5242880 / 6094848 bytes...
+I (5873) anti_phish: Verifying hash 5505024 / 6094848 bytes...
+I (5983) anti_phish: Verifying hash 5767168 / 6094848 bytes...
+I (6093) anti_phish: Verifying hash 6029312 / 6094848 bytes...
+I (6123) anti_phish: ================================================
+I (6123) anti_phish:   ANTI-PHISHING PROOF: wonder echo bomb balcony
+I (6123) anti_phish: ================================================
+I (6133) SEEDSIGNER_LOADER: Image OK: 6 segments, entry=0x4FF01F90
+I (6143) SEEDSIGNER_LOADER: PSRAM MMU footprint: 1900544 bytes
+I (6183) SEEDSIGNER_LOADER: fake_flash: vaddr=0x481f0000 paddr=0x001F0000
+I (6183) SEEDSIGNER_LOADER: Seg 0: addr=0x48170020 len=367236
+I (6203) SEEDSIGNER_LOADER:   -> fake_flash+0x170020
+I (6203) SEEDSIGNER_LOADER: Seg 1: addr=0x30100000 len=180
+--- 0x30100000: clk_ll_mpll_enable at /home/wolgwang/esp/esp-idf-v5.5/components/hal/esp32p4/include/hal/clk_tree_ll.h:156
+--- (inlined by) rtc_clk_mpll_enable at /home/wolgwang/esp/esp-idf-v5.5/components/esp_hw_support/port/esp32p4/rtc_clk.c:654
+I (6203) SEEDSIGNER_LOADER:   -> direct copy to 0x30100000
+--- 0x30100000: clk_ll_mpll_enable at /home/wolgwang/esp/esp-idf-v5.5/components/hal/esp32p4/include/hal/clk_tree_ll.h:156
+--- (inlined by) rtc_clk_mpll_enable at /home/wolgwang/esp/esp-idf-v5.5/components/esp_hw_support/port/esp32p4/rtc_clk.c:654
+I (6203) SEEDSIGNER_LOADER: Seg 2: addr=0x4FF00000 len=25776
+I (6213) SEEDSIGNER_LOADER:   -> direct copy to 0x4FF00000
+I (6213) SEEDSIGNER_LOADER: Seg 3: addr=0x48000020 len=1464928
+I (6263) SEEDSIGNER_LOADER:   -> fake_flash+0x20
+I (6263) SEEDSIGNER_LOADER: Seg 4: addr=0x4FF064B0 len=78592
+I (6263) SEEDSIGNER_LOADER:   -> direct copy to 0x4FF064B0
+I (6263) SEEDSIGNER_LOADER: Seg 5: addr=0x50108080 len=36
+--- 0x50108080: bootloader_uart0_print at /tmp/phase22_hw_loader/main/targets/esp32p4/jump_p4.c:49
+W (6263) SEEDSIGNER_LOADER: Segment 5 (0x50108080-0x501080A4) overlaps loader RTC JMP code (0x50108080-0x50108580); skipping RTC state copy.
+--- 0x50108080: bootloader_uart0_print at /tmp/phase22_hw_loader/main/targets/esp32p4/jump_p4.c:49
+--- 0x501080a4: bootloader_uart0_print at /tmp/phase22_hw_loader/main/targets/esp32p4/jump_p4.c:57
+--- 0x50108080: bootloader_uart0_print at /tmp/phase22_hw_loader/main/targets/esp32p4/jump_p4.c:49
+I (6283) SEEDSIGNER_LOADER: Ready to boot payload at entry 0x4FF01F90 (3 direct copies, 2 MMU mappings)
+JMP[1] entered
+JMP[2] WDT and SysTick disabled
+JMP[3] interrupts off, starting cache eviction
+JMP[4] D-cache evicted
+JMP[5] copies done, entry bytes: 0xA0736299
+JMP[6] MMU map: vaddr=0x48170000 paddr=0x00360000 pages=0x00000006
+  entry=0x00000017 val=0x00000C36 OK
+  entry=0x00000018 val=0x00000C37 OK
+  entry=0x00000019 val=0x00000C38 OK
+  entry=0x0000001A val=0x00000C39 OK
+  entry=0x0000001B val=0x00000C3A OK
+  entry=0x0000001C val=0x00000C3B OK
+JMP[6] MMU map: vaddr=0x48000000 paddr=0x001F0000 pages=0x00000017
+  entry=0x00000000 val=0x00000C1F OK
+  entry=0x00000001 val=0x00000C20 OK
+  entry=0x00000002 val=0x00000C21 OK
+  entry=0x00000003 val=0x00000C22 OK
+  entry=0x00000004 val=0x00000C23 OK
+  entry=0x00000005 val=0x00000C24 OK
+  entry=0x00000006 val=0x00000C25 OK
+  entry=0x00000007 val=0x00000C26 OK
+  entry=0x00000008 val=0x00000C27 OK
+  entry=0x00000009 val=0x00000C28 OK
+  entry=0x0000000A val=0x00000C29 OK
+  entry=0x0000000B val=0x00000C2A OK
+  entry=0x0000000C val=0x00000C2B OK
+  entry=0x0000000D val=0x00000C2C OK
+  entry=0x0000000E val=0x00000C2D OK
+  entry=0x0000000F val=0x00000C2E OK
+  entry=0x00000010 val=0x00000C2F OK
+  entry=0x00000011 val=0x00000C30 OK
+  entry=0x00000012 val=0x00000C31 OK
+  entry=0x00000013 val=0x00000C32 OK
+  entry=0x00000014 val=0x00000C33 OK
+  entry=0x00000015 val=0x00000C34 OK
+  entry=0x00000016 val=0x00000C35 OK
+JMP[7] JUMP!
+
+[KERN-SHIM] __wrap_call_start_cpu0 entered
+[KERN-SHIM] BSS cleared
+[KERN-SHIM] clocks init
+[KERN-SHIM] esp_mmu_map_init
+[KERN-SHIM] init stage0 0x480005c2
+[KERN-SHIM] init stage0 0x4800246a
+I (6932) cpu_start: Pro cpu start user code
+I (6932) cpu_start: cpu freq: 360000000 Hz
+[KERN-SHIM] init stage0 0x48000456
+I (6938) app_init: Application information:
+I (6940) app_init: Project name:     kern
+I (6944) app_init: App version:      0.0.20
+I (6948) app_init: ELF file SHA256:  ce35dae5a...
+--- Warning: Checksum mismatch between flashed and built applications. Checksum of built application is a1cfced32caafe2d0a5f86b9b41da89e28aab870fe3aeff415c504b053f2d38a
+I (6952) app_init: ESP-IDF:          v6.1
+[KERN-SHIM] init stage0 0x480005d4
+I (6961) efuse_init: Min chip rev:     v0.1
+I (6963) efuse_init: Max chip rev:     v1.99 
+I (6967) efuse_init: Chip rev:         v1.3
+[KERN-SHIM] init stage0 0x48003706
+I (6976) heap_init: Initializing. RAM available for dynamic allocation:
+I (6980) heap_init: At 4FF1EF40 len 0001C080 (112 KiB): RETENT_RAM
+I (6986) heap_init: At 4FF3AFC0 len 00004BF0 (18 KiB): RAM
+I (6991) heap_init: At 4FF40000 len 00040000 (256 KiB): RAM
+I (6997) heap_init: At 501080A4 len 00007F5C (31 KiB): RTCRAM
+I (7002) heap_init: At 301000B4 len 00001F4C (7 KiB): SPM
+[KERN-SHIM] init stage0 0x48009242
+[KERN-SHIM] init stage0 0x48008412
+[KERN-SHIM] init stage0 0x48161126
+[KERN-SHIM] init stage0 0x480024fa
+[KERN-SHIM] init stage0 0x4800843a
+[KERN-SHIM] init stage0 0x48009cda
+[KERN-SHIM] init stage0 0x4800a43a
+[KERN-SHIM] init stage0 0x4800bc06
+[KERN-SHIM] init stage0 0x480003fe
+[KERN-SHIM] init stage0 0x48008422
+[KERN-SHIM] init stage0 0x48001bd0
+I (7044) spi_flash: detected chip: gd
+I (7045) spi_flash: flash io: qio
+W (7048) spi_flash: Detected size(16384k) larger than the size in the binary image header(8192k). Using the size in the binary image header.
+[KERN-SHIM] init stage0 0x480006d2
+W (7066) efuse_init: eFuse virtual mode is enabled. If Secure boot or Flash encryption is enabled then it does not provide any security. FOR TESTING ONLY!
+W (7077) efuse: [Virtual] Loading virtual efuse blocks from real efuses
+[KERN-SHIM] constructors
+[KERN-SHIM] init stage1 0x4813606e
+[KERN-SHIM] init stage1 0x48002c1a
+[KERN-SHIM] init stage1 0x4800187e
+[KERN-SHIM] init stage1 0x4813742e
+[KERN-SHIM] init stage1 0x48004db6
+I (7103) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (7108) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+[KERN-SHIM] init stage1 0x4815e9ac
+I (7120) sleep_clock: System sleep clock ICG setting initialization
+[KERN-SHIM] init stage1 0x4815ed30
+[KERN-SHIM] init stage1 0x4800c1ee
+I (7132) nvs_sec_provider: NVS Encryption - Registering HMAC-based scheme...
+[KERN-SHIM] init stage1 0x4800251e
+[KERN-SHIM] init stage1 0x4800a064
+[KERN-SHIM] init stage1 0x48002536
+[KERN-SHIM] adding PSRAM heap
+[KERN-SHIM] jumping to esp_startup_start_app
+I (7155) main_task: Started on CPU0
+I (7156) main_task: Calling app_main()
+I (7167) wave_43: ESP32-C6 held in reset
+I (7171) esp_lvgl:adapter: LVGL adapter initialized successfully
+W (7171) ledc: GPIO 26 is not usable, maybe conflict with others
+I (7174) wave_43: MIPI DSI PHY Powered on

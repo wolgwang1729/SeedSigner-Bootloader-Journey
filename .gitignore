@@ -6,6 +6,8 @@ managed_components/
 
 # Python / Pytest
 __pycache__/
+# Phase 20 throwaway signing keys — private key material, NEVER commit
+Phase_20/keys/
 *.pyc
 .pytest_cache/
 
@@ -13,6 +15,12 @@ __pycache__/
 *.log
 *.img
 *.bin
+
+# Preserve verified silicon test logs and evidence in phase logs
+!Phase_*/logs/*.log
+!Phase_*/logs/*.txt
+!Phase_*/logs/*.raw
+!Phase_20/logs/flash_backup_20261016.bin
 
 # macOS
 .DS_Store

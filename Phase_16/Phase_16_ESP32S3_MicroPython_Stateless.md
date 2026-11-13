@@ -131,7 +131,7 @@ Produces: `build/WAVESHARE_ESP32_S3_TOUCH_LCD_35B/micropython.bin`
 
 ### Step 2: Sign the Payload
 ```bash
-cd ~/Desktop/SoB/Phase_16
+cd Phase_16
 ./build_micropython.sh
 ```
 - Generates `Phase_16/build/seedsigner_esp32s3.bin` (Specter-signed bundle for SD card).

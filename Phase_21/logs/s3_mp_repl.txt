@@ -1,0 +1,86 @@
+# Capture: esp-emu --uart-tcp 127.0.0.1:5555 vs /tmp/emu_phase21_mp/s3e2e.bin (S3 loader +
+# MicroPython bundle). UART0 stream from TCP connect to REPL probes. Prompt ~70 min wall.
+# Client: Phase_21/tools/repl_client.py logic (CR-terminated sends). Uncolored text per esp-emu.
+I (1647) SEEDSIGNER_LOADER: Performing secp256k1 multisig verification...
+I (1687) SEEDSIGNER_LOADER: Signature verification PASSED!
+I (1687) anti_phish: Erasing 6160384 bytes at 0x00220000...
+I (1697) anti_phish: Filling with TRNG random data...
+I (41427) anti_phish: Flash fill provisioned. Hash stored.
+I (44957) anti_phish: ================================================
+I (44957) anti_phish:   ANTI-PHISHING PROOF: cruel push unusual adapt
+I (44957) anti_phish: ================================================
+I (44957) SEEDSIGNER_LOADER: Image OK: 7 segments, entry=0x40389B78
+I (44957) SEEDSIGNER_LOADER: PSRAM MMU footprint: 2621440 bytes
+I (44967) SEEDSIGNER_LOADER: fake_flash: vaddr=0x3c2d0000 paddr=0x002A0000
+I (44967) SEEDSIGNER_LOADER: Seg 0: addr=0x3C1D0020 len=664804
+I (44967) SEEDSIGNER_LOADER:   -> fake_flash+0x1D0020
+I (44967) SEEDSIGNER_LOADER: Seg 1: addr=0x3FC99C00 len=24320
+I (44967) SEEDSIGNER_LOADER:   -> direct copy to 0x3FC99C00
+I (44967) SEEDSIGNER_LOADER: Seg 2: addr=0x40374000 len=31748
+I (44967) SEEDSIGNER_LOADER:   -> direct copy to 0x40374000
+I (44967) SEEDSIGNER_LOADER: Seg 3: addr=0x42000020 len=1856856
+I (44977) SEEDSIGNER_LOADER:   -> fake_flash+0x20
+I (44977) SEEDSIGNER_LOADER: Seg 4: addr=0x4037BC04 len=57268
+I (44977) SEEDSIGNER_LOADER:   -> direct copy to 0x4037BC04
+I (44977) SEEDSIGNER_LOADER: Seg 5: addr=0x50001000 len=32
+I (44977) SEEDSIGNER_LOADER:   -> direct copy to 0x50001000
+I (44977) SEEDSIGNER_LOADER: Seg 6: addr=0x600FE000 len=56
+I (44977) SEEDSIGNER_LOADER:   -> direct copy to 0x600FE000
+I (44977) SEEDSIGNER_LOADER: Ready to boot payload at entry 0x40389B78 (5 direct copies, 2 MMU mappings)
+
+=== STATELESS SHIM S3 MICROPYTHON PAYLOAD BOOT OK ===
+=== __wrap_call_start_cpu0 ENTERED ===
+BSS cleared.
+Calling clocks init...
+Clocks initialized and interrupt matrix cleared.
+Initializing MMU software contexts...
+Calling init functions...
+--- calling fn 0x42075688, stage 0 ---
+--- calling fn 0x42075a38, stage 0 ---
+--- calling fn 0x420755e8, stage 0 ---
+--- calling fn 0x42075698, stage 0 ---
+--- calling fn 0x4207664c, stage 0 ---
+--- calling fn 0x42077ddc, stage 0 ---
+--- calling fn 0x4207753c, stage 0 ---
+--- calling fn 0x4207a4a4, stage 0 ---
+--- calling fn 0x42075a80, stage 0 ---
+--- calling fn 0x42075a90, stage 0 ---
+--- calling fn 0x421c1040, stage 0 ---
+--- calling fn 0x421c1464, stage 0 ---
+--- calling fn 0x4207a41c, stage 0 ---
+--- calling fn 0x4207a16c, stage 0 ---
+--- calling fn 0x42077548, stage 0 ---
+--- calling fn 0x42075a9c, stage 0 ---
+--- calling fn 0x421b89ac, stage 0 ---
+Running global constructors...
+--- calling fn 0x4218fd18, stage 1 ---
+--- calling fn 0x421b8a50, stage 1 ---
+--- calling fn 0x42077338, stage 1 ---
+--- calling fn 0x42075ac0, stage 1 ---
+--- calling fn 0x42079f38, stage 1 ---
+--- calling fn 0x42075acc, stage 1 ---
+Manually adding PSRAM to heap...
+Jumping to esp_startup_start_app...
+E (4253) i2c.master: I2C transaction unexpected nack detected
+E (4253) i2c.master: s_i2c_synchronous_transaction(945): I2C transaction failed
+E (4253) i2c.master: i2c_master_multi_buffer_transmit(1214): I2C transaction failed
+E (4253) tca9554: write_direction_reg(136): Write direction reg failed
+E (4253) tca9554: reset(153): Write dir reg failed
+E (4253) tca9554: esp_io_expander_new_i2c_tca9554(83): Reset failed
+E (4253) i2c.master: I2C transaction unexpected nack detected
+E (4253) i2c.master: s_i2c_synchronous_transaction(945): I2C transaction failed
+E (4253) i2c.master: i2c_master_transmit_receive(1248): I2C transaction failed
+E (4253) AXP2101: Init PMU FAILED!
+MicroPython v1.27.0-1.gdb4fd73b17.dirty on 2026-08-15; Waveshare ESP32-S3-Touch-LCD-3.5B with ESP32S3
+Type "help()" for more information.
+>>> print('emu21-repl-ok')
+emu21-repl-ok
+>>> import sys; print(sys.platform)
+esp32
+>>> 1+1
+2
+>>> exit
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+NameError: name 'exit' isn't defined
+>>> 

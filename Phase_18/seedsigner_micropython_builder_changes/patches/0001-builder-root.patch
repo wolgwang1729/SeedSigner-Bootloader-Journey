@@ -1,0 +1,84 @@
+diff --git a/Makefile b/Makefile
+index a6298bb..82157b2 100644
+--- a/Makefile
++++ b/Makefile
+@@ -10,6 +10,7 @@ DOCKER_RUN = docker run --rm \
+ 	$(if $(BOARD),-e BOARD=$(BOARD)) \
+ 	$(if $(BOARD_VARIANT),-e BOARD_VARIANT=$(BOARD_VARIANT)) \
+ 	$(if $(MP_ALLOW_DIRTY),-e MP_ALLOW_DIRTY=$(MP_ALLOW_DIRTY)) \
++	$(if $(HEADLESS_VIRTUAL_FB),-e HEADLESS_VIRTUAL_FB=$(HEADLESS_VIRTUAL_FB)) \
+ 	$(if $(PROFILE),-e PROFILE=$(PROFILE)) \
+ 	$(if $(MP_DISABLE_NETWORK),-e MP_DISABLE_NETWORK=$(MP_DISABLE_NETWORK)) \
+ 	-v $(PWD):/workspace/seedsigner-micropython-builder \
+diff --git a/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_43/mpconfigboard.cmake b/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_43/mpconfigboard.cmake
+index c47a042..ae607f9 100644
+--- a/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_43/mpconfigboard.cmake
++++ b/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_43/mpconfigboard.cmake
+@@ -15,3 +15,12 @@ endif()
+ # Freeze the SeedSigner app's required stdlib modules (logging + hmac, from
+ # micropython-lib) into the firmware so they need not be vendored to /lib.
+ set(MICROPY_FROZEN_MANIFEST ${MICROPY_BOARD_DIR}/manifest.py)
++
++# Stateless-loader entry: the shim replays early boot (clocks, MMU contexts,
++# init fns, PSRAM heap, CLIC vectors) after the loader's PSRAM-MMU JMP, then
++# hands off to esp_startup_start_app. GATED to the PRE_REV3_STATELESS variant:
++# the --wrap redirections (call_start_cpu0, heap caps, OTA stubs, ...) must
++# NOT leak into flash-execution firmware builds of this board.
++if(MICROPY_BOARD_VARIANT STREQUAL "PRE_REV3_STATELESS")
++    list(APPEND MICROPY_EXTRA_COMPONENT_DIRS "${MICROPY_BOARD_DIR}/stateless_shim")
++endif()
+diff --git a/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_43/sdkconfig.board b/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_43/sdkconfig.board
+index 53dcc2e..0dfb0da 100644
+--- a/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_43/sdkconfig.board
++++ b/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_43/sdkconfig.board
+@@ -255,3 +255,14 @@ CONFIG_MBEDTLS_RIPEMD160_C=y
+ # ESP32-P4 only (Kconfig depends on IDF_TARGET_ESP32P4, default n). Tip from
+ # odudex (cUR upstream); needs a cUR pin carrying the SIMD path (>= main 0ed276b).
+ CONFIG_UR_XOR_ESP32P4_SIMD=y
++
++# ── Headless E2E (LOCAL experiment, flagged for Keith, NOT for upstream) ──
++# Console UART 921600 for the headless framebuffer stream (stock 115200 moves
++# one 768 KB frame in ~95 s; 921600 in ~12 s). Baud needs Custom UART0 on the
++# DEV-KIT's wired pins (U0TXD=37/U0RXD=38); wiring identical to default.
++# Match on host: fb_live.py --baud 921600. Restore before panel bring-up.
++CONFIG_ESP_CONSOLE_UART_CUSTOM=y
++CONFIG_ESP_CONSOLE_UART_CUSTOM_NUM_0=y
++CONFIG_ESP_CONSOLE_UART_TX_GPIO=37
++CONFIG_ESP_CONSOLE_UART_RX_GPIO=38
++CONFIG_ESP_CONSOLE_UART_BAUDRATE=921600
+diff --git a/scripts/build_firmware.sh b/scripts/build_firmware.sh
+index 6c20aaf..087e6c7 100755
+--- a/scripts/build_firmware.sh
++++ b/scripts/build_firmware.sh
+@@ -71,6 +71,7 @@ idf_version_part() {
+ IDF_VERSION_STR="$(idf_version_part MAJOR).$(idf_version_part MINOR).$(idf_version_part PATCH)"
+ IDF_VERSION_NUM=$(( $(idf_version_part MAJOR) * 10000 + $(idf_version_part MINOR) * 100 + $(idf_version_part PATCH) ))
+ if [ "$IDF_TARGET_NAME" = "esp32p4" ] && [ "$BOARD_VARIANT" != "PRE_REV3" ] \
++    && [[ "$BOARD_VARIANT" != PRE_REV3_* ]] \
+     && [ "$IDF_VERSION_NUM" -lt 50503 ]; then
+   echo "ERROR: ESP-IDF v$IDF_VERSION_STR cannot target ESP32-P4 chip revision v3.x (needs v5.5.3+)."
+   echo "  Use a base image built with a newer ESP_IDF_REF (see README-dev.md), or build"
+@@ -81,6 +82,14 @@ fi
+ PORTS_ESP32_DIR="$ROOT_DIR/ports/esp32"
+ USER_C_MODULES_FILE="$ROOT_DIR/usercmodule.cmake"
+ MICROPY_CMAKE_ARGS="${CMAKE_ARGS:-} -DUSER_C_MODULES=$USER_C_MODULES_FILE"
++# Headless DEV-KIT virtual display + emulated touch (SoB Phase 18): forwarded
++# from the make command line (HEADLESS_VIRTUAL_FB=1) through docker into this
++# script, then to the IDF configure as -D so board_common compiles
++# headless_virtual_fb.c. Off by default (stock panel behaviour).
++if [ -n "${HEADLESS_VIRTUAL_FB:-}" ]; then
++  MICROPY_CMAKE_ARGS="$MICROPY_CMAKE_ARGS -DHEADLESS_VIRTUAL_FB=$HEADLESS_VIRTUAL_FB"
++  echo "Headless virtual FB: ON (HEADLESS_VIRTUAL_FB=$HEADLESS_VIRTUAL_FB)"
++fi
+ 
+ # SeedSigner is an air-gapped signer: strip the entire radio/TCP-IP stack
+ # (WiFi, BT, LWIP, esp_netif, ethernet, ESP-NOW) from the firmware at the
+@@ -233,7 +242,7 @@ fi
+     rev_min="$(sed -n 's/^CONFIG_ESP_REV_MIN_FULL=//p' "$BUILD_DIR/sdkconfig")"; rev_min="${rev_min:-0}"
+     rev_max="$(sed -n 's/^CONFIG_ESP_REV_MAX_FULL=//p' "$BUILD_DIR/sdkconfig")"; rev_max="${rev_max:-0}"
+     CHIP_REV_RANGE="v$((rev_min / 100)).$((rev_min % 100)) to v$((rev_max / 100)).$((rev_max % 100))"
+-    if [ "$BOARD_VARIANT" = "PRE_REV3" ]; then
++    if [ "$BOARD_VARIANT" = "PRE_REV3" ] || [[ "$BOARD_VARIANT" == PRE_REV3_* ]]; then
+       rev_ok=$(( rev_max == 199 ))
+     else
+       rev_ok=$(( rev_min == 300 && rev_max == 399 ))

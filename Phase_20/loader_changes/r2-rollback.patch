@@ -1,0 +1,134 @@
+--- a/main/CMakeLists.txt
++++ b/main/CMakeLists.txt
+@@ -40,6 +40,7 @@
+ 
+ idf_component_register(
+     SRCS "main.c" "esp_image.c" "bundle_validate.c" "anti_phish.c" "bip39_wordlist.c"
++         "rollback.c"
+          ${TARGET_SRCS}
+          "${KEYS_DIR}/${VENDOR_KEYS_PROFILE}/vendor_keys.c"
+     PRIV_INCLUDE_DIRS "${KEYS_DIR}" "."
+--- a/main/main.c
++++ b/main/main.c
+@@ -25,6 +25,7 @@
+ #include "storage.h"
+ #include "esp_image.h"
+ #include "bundle_validate.h"
++#include "rollback.h"
+ #include "jump.h"
+ 
+ static const char *TAG = "SEEDSIGNER_LOADER";
+@@ -105,6 +106,15 @@
+             memzero(psram_buf, fw_size);
+             while (1) vTaskDelay(1000 / portTICK_PERIOD_MS);
+         }
++
++        // Phase 20 R2: reversible monotonic anti-rollback. The static
++        // floor above stays; the NVS counter additionally refuses any
++        // bundle older than the highest-seen version (no eFuse burns).
++        if (rollback_check_and_update(main_hdr->pl_ver) != ESP_OK) {
++            ESP_LOGE(TAG, "HALTING execution.");
++            memzero(psram_buf, fw_size);
++            while (1) vTaskDelay(1000 / portTICK_PERIOD_MS);
++        }
+ 
+         // Bounds-check main section declared payload size against actual
+         // loaded bytes. blsect_validate_header() only enforces the 16 MB
+--- /dev/null
++++ b/main/rollback.c
+@@ -0,0 +1,66 @@
++/* Phase 20 R2 — reversible monotonic anti-rollback (NVS counter, no eFuse). */
++#include "rollback.h"
++#include <string.h>
++#include "esp_log.h"
++#include "esp_partition.h"
++
++static const char *TAG = "rollback";
++
++#define RB_NVS_LABEL "nvs"
++#define RB_SLOT_OFF  0x1000u
++#define RB_MAGIC     0x524F4C42u /* "ROLB" */
++
++typedef struct {
++    uint32_t magic;
++    uint32_t max_ver;
++} rb_state_t;
++
++esp_err_t rollback_check_and_update(uint16_t pl_ver)
++{
++    const esp_partition_t *part = esp_partition_find_first(
++        ESP_PARTITION_TYPE_DATA, 0x99, RB_NVS_LABEL);
++    if (!part) {
++        ESP_LOGE(TAG, "nvs partition not found");
++        return ESP_FAIL;
++    }
++    rb_state_t st;
++    if (esp_partition_read(part, RB_SLOT_OFF, &st, sizeof(st)) != ESP_OK) {
++        ESP_LOGE(TAG, "rollback slot read failed");
++        return ESP_FAIL;
++    }
++    if (st.magic != RB_MAGIC) {
++        const rb_state_t init = { RB_MAGIC, (uint32_t)pl_ver };
++        if (esp_partition_erase_range(part, RB_SLOT_OFF, 0x1000) != ESP_OK) {
++            ESP_LOGE(TAG, "rollback slot erase failed");
++            return ESP_FAIL;
++        }
++        if (esp_partition_write(part, RB_SLOT_OFF, &init, sizeof(init)) != ESP_OK) {
++            ESP_LOGE(TAG, "rollback slot write failed");
++            return ESP_FAIL;
++        }
++        ESP_LOGI(TAG, "Rollback counter initialized at pl_ver=%u", pl_ver);
++        return ESP_OK;
++    }
++    if ((uint32_t)pl_ver < st.max_ver) {
++        ESP_LOGE(TAG, "Firmware rollback refused: pl_ver=%u < stored=%lu. Halting.",
++                 pl_ver, (unsigned long)st.max_ver);
++        return ESP_FAIL;
++    }
++    if ((uint32_t)pl_ver > st.max_ver) {
++        const rb_state_t upd = { RB_MAGIC, (uint32_t)pl_ver };
++        if (esp_partition_erase_range(part, RB_SLOT_OFF, 0x1000) != ESP_OK) {
++            ESP_LOGE(TAG, "rollback slot erase failed");
++            return ESP_FAIL;
++        }
++        if (esp_partition_write(part, RB_SLOT_OFF, &upd, sizeof(upd)) != ESP_OK) {
++            ESP_LOGE(TAG, "rollback slot write failed");
++            return ESP_FAIL;
++        }
++        ESP_LOGI(TAG, "Rollback counter advanced %lu -> %u",
++                 (unsigned long)st.max_ver, pl_ver);
++    } else {
++        ESP_LOGI(TAG, "Rollback counter steady at %lu (pl_ver=%u)",
++                 (unsigned long)st.max_ver, pl_ver);
++    }
++    return ESP_OK;
++}
+--- /dev/null
++++ b/main/rollback.h
+@@ -0,0 +1,26 @@
++/* Phase 20 R2 — reversible monotonic anti-rollback (NVS counter, no eFuse).
++ *
++ * Complements the static `pl_ver >= 1` floor in main.c with a monotonic
++ * highest-seen version stored in the second 4 KB sector of the `nvs`
++ * partition (offset 0x1000 — the anti-phishing provision state owns
++ * [0, 0x1000), so the two never share an erase sector). Raw
++ * esp_partition_* idiom, same as anti_phish.c. Fully reversible: erasing
++ * the slot (or reflashing the NVS region) resets the counter — that reset
++ * is the documented bypass proving this route is reversible-grade only
++ * (production still needs eFuse SECURE_VERSION).
++ */
++#pragma once
++#include <stdint.h>
++#include "esp_err.h"
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++/* Returns ESP_OK and records pl_ver when allowed; ESP_FAIL on rollback or
++ * any storage error. Caller must fail closed (memzero + halt). */
++esp_err_t rollback_check_and_update(uint16_t pl_ver);
++
++#ifdef __cplusplus
++}
++#endif

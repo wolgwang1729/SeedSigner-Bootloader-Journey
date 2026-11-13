@@ -218,7 +218,7 @@ make docker-build-all BOARD=WAVESHARE_ESP32_S3_TOUCH_LCD_35B
 
 ### Step 2: Sign the Payload into a Specter Bundle
 ```bash
-cd ~/Desktop/SoB/Phase_17
+cd Phase_17
 ./build_micropython.sh
 # Output: Phase_17/build/seedsigner_esp32s3.bin (2,635,792 bytes)
 ```

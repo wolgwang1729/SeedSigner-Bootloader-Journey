@@ -1,0 +1,196 @@
+diff --git a/main/esp_image.c b/main/esp_image.c
+index 7569914..6e68a23 100644
+--- a/main/esp_image.c
++++ b/main/esp_image.c
+@@ -106,6 +106,16 @@ image_plan_t esp_image_plan(const uint8_t *psram_buf, uint32_t payload_offset,
+             IMAGE_FATAL_RETURN();
+         }
+ 
++        // IDF 6.x appends a zero-address padding segment before the image
++        // signature block. It carries no loadable data, so skip it instead of
++        // rejecting the image as outside the P4/S3 memory windows.
++        if (seg.load_addr == 0 && seg.data_len > 0) {
++            ESP_LOGI(TAG, "Seg %d: padding block (%lu bytes), skipping",
++                     i, (unsigned long)seg.data_len);
++            offset += seg.data_len;
++            continue;
++        }
++
+ #if CONFIG_IDF_TARGET_ESP32P4
+         if (seg.load_addr >= 0x48000000 && seg.load_addr < 0x4C000000) {
+             uint64_t end64 = (uint64_t)(seg.load_addr - 0x48000000) + seg.data_len;
+@@ -174,6 +184,13 @@ image_plan_t esp_image_plan(const uint8_t *psram_buf, uint32_t payload_offset,
+             IMAGE_FATAL_RETURN();
+         }
+ 
++        // Zero-address padding segment (IDF 6.x): already accounted for in the
++        // first pass, and has no destination in either memory window.
++        if (seg.load_addr == 0 && seg.data_len > 0) {
++            offset += seg.data_len;
++            continue;
++        }
++
+         ESP_LOGI(TAG, "Seg %d: addr=0x%08lX len=%lu",
+                  i, (unsigned long)seg.load_addr, (unsigned long)seg.data_len);
+ 
+@@ -222,6 +239,35 @@ image_plan_t esp_image_plan(const uint8_t *psram_buf, uint32_t payload_offset,
+                    (seg.load_addr >= 0x30100000 && seg.load_addr < 0x30102000) ||
+                    /* LP RAM (SOC_LP_RAM 0x50108000-0x50110000, 32KB: rtc_noinit/sleep) */
+                    (seg.load_addr >= 0x50108000 && seg.load_addr < 0x50110000)) {
++            // The loader's cache-off JMP code lives in RTC fast memory at
++            // _rtc_text_start.._rtc_text_end. A payload RTC/LP-RAM segment that
++            // lands on those bytes would overwrite the code that is currently
++            // copying it and derail the hand-off. Kern's only LP-RAM segment is
++            // sleep-mode state (sleep_modes.c .rtc.force_slow), not needed to
++            // boot, so skip overlapping segments with a loud warning. A payload
++            // that truly needs RTC state across stateless boot must be rejected
++            // here rather than silently losing it.
++#if CONFIG_IDF_TARGET_ESP32P4
++            {
++                extern char _rtc_text_start;
++                extern char _rtc_text_end;
++                uint32_t jmp_start = (uint32_t)(uintptr_t)&_rtc_text_start;
++                uint32_t jmp_end   = (uint32_t)(uintptr_t)&_rtc_text_end;
++                uint64_t seg_end64 = (uint64_t)seg.load_addr + seg.data_len;
++                if (seg_end64 > UINT32_MAX) {
++                    ESP_LOGE(TAG, "Segment %d end overflows. Halting.", i);
++                    IMAGE_FATAL_RETURN();
++                }
++                uint32_t seg_end = (uint32_t)seg_end64;
++                if (seg.load_addr < jmp_end && seg_end > jmp_start) {
++                    ESP_LOGW(TAG, "Segment %d (0x%08lX-0x%08lX) overlaps loader RTC JMP code (0x%08lX-0x%08lX); skipping RTC state copy.",
++                             i, (unsigned long)seg.load_addr, (unsigned long)seg_end,
++                             (unsigned long)jmp_start, (unsigned long)jmp_end);
++                    offset += seg.data_len;
++                    continue;
++                }
++            }
++#endif
+             if (plan.copy_count >= MAX_DIRECT_COPIES) {
+                 ESP_LOGE(TAG, "Exceeded MAX_DIRECT_COPIES (%d). Halting.", MAX_DIRECT_COPIES);
+                 IMAGE_FATAL_RETURN();
+diff --git a/main/main.c b/main/main.c
+index 5a06115..bffde06 100644
+--- a/main/main.c
++++ b/main/main.c
+@@ -29,6 +29,17 @@
+ 
+ static const char *TAG = "SEEDSIGNER_LOADER";
+ 
++static bool platform_accepted(const char *platform)
++{
++    static const char *const accepted[] = ACCEPTED_PLATFORMS;
++    for (size_t i = 0; i < sizeof(accepted) / sizeof(accepted[0]); i++) {
++        if (strcmp(platform, accepted[i]) == 0) {
++            return true;
++        }
++    }
++    return false;
++}
++
+ // Progress callback fed to blsig_verify_multisig (secp256k1 is compute-intensive).
+ static void crypto_progress_cb(void *ctx, bl_cbarg_t arg, uint32_t total, uint32_t complete)
+ {
+@@ -49,7 +60,7 @@ void app_main(void)
+     esp_cpu_intr_disable(1 << 7); // ETS_CACHEERR_INUM on ESP32-S3
+ #endif
+ 
+-    ESP_LOGI(TAG, "SeedSigner Stateless Loader — Target: %s", EXPECTED_PLATFORM);
++    ESP_LOGI(TAG, "Stateless loader ready (default platform: %s)", EXPECTED_PLATFORM);
+ 
+     size_t fw_size = 0;
+ 
+@@ -92,12 +103,13 @@ void app_main(void)
+         char platform_str[BL_ATTR_STR_MAX] = {0};
+         if (!blsect_get_attr_str(main_hdr, bl_attr_platform, platform_str,
+                                  sizeof(platform_str)) ||
+-            strcmp(platform_str, EXPECTED_PLATFORM) != 0) {
+-            ESP_LOGE(TAG, "Invalid platform attribute: '%s' (expected %s). Halting.",
++            !platform_accepted(platform_str)) {
++            ESP_LOGE(TAG, "Invalid platform attribute: '%s' (loader accepts %s). Halting.",
+                      platform_str, EXPECTED_PLATFORM);
+             memzero(psram_buf, fw_size);
+             while (1) vTaskDelay(1000 / portTICK_PERIOD_MS);
+         }
++        ESP_LOGI(TAG, "Platform accepted: %s", platform_str);
+ 
+         ESP_LOGI(TAG, "Firmware version: %lu", (unsigned long)main_hdr->pl_ver);
+         if (main_hdr->pl_ver < 1) {
+diff --git a/main/storage.h b/main/storage.h
+index d1e77ad..a8cb06f 100644
+--- a/main/storage.h
++++ b/main/storage.h
+@@ -8,10 +8,14 @@
+ 
+ #if CONFIG_IDF_TARGET_ESP32P4
+ #define SD_FIRMWARE_PATH  MOUNT_POINT "/seedsigner_esp32p4.bin"
++#define SD_FIRMWARE_PATHS { SD_FIRMWARE_PATH, MOUNT_POINT "/kern_esp32p4.bin", MOUNT_POINT "/specter_esp32p4.bin" }
+ #define EXPECTED_PLATFORM "seedsigner_esp32p4"
++#define ACCEPTED_PLATFORMS { EXPECTED_PLATFORM, "kern_esp32p4", "specter_esp32p4" }
+ #elif CONFIG_IDF_TARGET_ESP32S3
+ #define SD_FIRMWARE_PATH  MOUNT_POINT "/seedsigner_esp32s3.bin"
++#define SD_FIRMWARE_PATHS { SD_FIRMWARE_PATH }
+ #define EXPECTED_PLATFORM "seedsigner_esp32s3"
++#define ACCEPTED_PLATFORMS { EXPECTED_PLATFORM }
+ #else
+ #error "Unsupported IDF Target for SeedSigner Bootloader"
+ #endif
+diff --git a/main/targets/esp32p4/storage_p4.c b/main/targets/esp32p4/storage_p4.c
+index 2e7c734..bd3a6ca 100644
+--- a/main/targets/esp32p4/storage_p4.c
++++ b/main/targets/esp32p4/storage_p4.c
+@@ -152,9 +152,18 @@ uint8_t *load_firmware_from_sd(size_t *out_size)
+         return NULL;
+     }
+ 
+-    struct stat st;
+-    if (stat(SD_FIRMWARE_PATH, &st) != 0) {
+-        ESP_LOGE(TAG, "Firmware file %s not found. Halting.", SD_FIRMWARE_PATH);
++    static const char *const fw_paths[] = SD_FIRMWARE_PATHS;
++    const char *fw_path = NULL;
++    struct stat st = {0};
++    for (size_t i = 0; i < sizeof(fw_paths) / sizeof(fw_paths[0]); i++) {
++        if (stat(fw_paths[i], &st) == 0) {
++            fw_path = fw_paths[i];
++            break;
++        }
++    }
++    if (fw_path == NULL) {
++        ESP_LOGE(TAG, "No accepted firmware bundle on SD card (tried %s, ...). Halting.",
++                 SD_FIRMWARE_PATH);
+         unmount_and_power_off(card);
+         return NULL;
+     }
+@@ -171,9 +180,9 @@ uint8_t *load_firmware_from_sd(size_t *out_size)
+         return NULL;
+     }
+ 
+-    FILE *f = fopen(SD_FIRMWARE_PATH, "rb");
++    FILE *f = fopen(fw_path, "rb");
+     if (!f) {
+-        ESP_LOGE(TAG, "Failed to open %s. Halting.", SD_FIRMWARE_PATH);
++        ESP_LOGE(TAG, "Failed to open %s. Halting.", fw_path);
+         free(psram_buf);
+         unmount_and_power_off(card);
+         return NULL;
+@@ -191,6 +200,6 @@ uint8_t *load_firmware_from_sd(size_t *out_size)
+     unmount_and_power_off(card);
+ 
+     *out_size = st.st_size;
+-    ESP_LOGI(TAG, "Loaded %lu bytes from %s", (unsigned long)*out_size, SD_FIRMWARE_PATH);
++    ESP_LOGI(TAG, "Loaded %lu bytes from %s", (unsigned long)*out_size, fw_path);
+     return psram_buf;
+ }
+diff --git a/tools/generate_signed_payload.py b/tools/generate_signed_payload.py
+index e16b8f9..16fff03 100755
+--- a/tools/generate_signed_payload.py
++++ b/tools/generate_signed_payload.py
+@@ -59,7 +59,7 @@ def main():
+     parser.add_argument("input", help="Raw input binary")
+     parser.add_argument("output", help="Signed output binary")
+     parser.add_argument("--platform", default="seedsigner_esp32p4",
+-                        choices=["seedsigner_esp32p4", "seedsigner_esp32s3"],
++                        choices=["seedsigner_esp32p4", "seedsigner_esp32s3", "kern_esp32p4", "specter_esp32p4"],
+                         help="Target platform identifier (default: seedsigner_esp32p4)")
+     parser.add_argument("--version", type=int, default=1, help="Firmware version (default: 1)")
+     parser.add_argument("--key", default=None, help="Path to PEM payload signing key")

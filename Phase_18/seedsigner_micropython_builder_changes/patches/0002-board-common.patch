@@ -1,0 +1,99 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 6be9aa0..880c155 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -24,6 +24,13 @@ set(SRC_FILES
+     "src/scan_coordinator.c"
+ )
+ 
++# Headless DEV-KIT virtual display + emulated touch (SoB Phase 18).
++# Enabled with -DHEADLESS_VIRTUAL_FB=1 on the idf.py command line; off by
++# default so stock panel behaviour is unchanged.
++if(HEADLESS_VIRTUAL_FB)
++    list(APPEND SRC_FILES "src/headless_virtual_fb.c")
++endif()
++
+ # All dependencies listed unconditionally where possible. The #if BOARD_HAS_*
+ # guards in C source compile out unused peripheral code when the board config
+ # doesn't define them. The components just need to be present for include path
+@@ -105,6 +112,10 @@ idf_component_register(
+     REQUIRES ${REQUIRED_COMPONENTS}
+ )
+ 
++if(HEADLESS_VIRTUAL_FB)
++    target_compile_definitions(${COMPONENT_LIB} PUBLIC HEADLESS_VIRTUAL_FB=1)
++endif()
++
+ # esp_video's ISP-pipeline entry point (esp_video_isp_pipeline_init) is a linked
+ # global, but its declaration lives in the component's PRIV_INCLUDE_DIRS. The CSI
+ # driver calls it directly so it can supply its own IPA configuration instead of
+diff --git a/src/board_init.c b/src/board_init.c
+index 22ae989..2f703e5 100644
+--- a/src/board_init.c
++++ b/src/board_init.c
+@@ -65,6 +65,10 @@
+ #endif
+ #include "lvgl.h"
+ 
++#ifdef HEADLESS_VIRTUAL_FB
++#include "headless_virtual_fb.h"
++#endif
++
+ static const char *TAG = "board";
+ 
+ /* ── Resolution globals ── */
+@@ -1072,6 +1076,24 @@ static void lvgl_port_setup(const board_app_config_t *app_cfg,
+     port_cfg.task_stack_caps  = MALLOC_CAP_SPIRAM;
+     ESP_ERROR_CHECK(lvgl_port_init(&port_cfg));
+ 
++#ifdef HEADLESS_VIRTUAL_FB
++    /* Headless DEV-KIT (no panel): virtual display + emulated touch take over
++     * here so none of the panel-specific registration below runs. */
++    if (disp_out) {
++        *disp_out = NULL;
++    }
++    if (touch_out) {
++        *touch_out = NULL;
++    }
++    if (panel_handle == NULL) {
++        if (hvfb_init_ex(disp_out, touch_out, landscape ? 1 : 0) == 0) {
++            ESP_LOGI(TAG, "HEADLESS_VIRTUAL_FB active: display+touch virtualised");
++            return;
++        }
++        ESP_LOGW(TAG, "HEADLESS_VIRTUAL_FB init failed; falling back to panel path");
++    }
++#endif
++
+     /* Determine LVGL display dimensions based on orientation.
+      * ST7701 (DSI): portrait uses direct_mode with DPI framebuffers;
+      *   landscape uses swapped dimensions with custom CPU-rotation flush.
+@@ -1534,7 +1556,11 @@ int board_init(const board_app_config_t *app_cfg,
+     board_display_st7789_init(&io_handle, &panel_handle,
+                                BOARD_LCD_H_RES * BOARD_LCD_V_RES * sizeof(lv_color16_t));
+ #elif BOARD_DISPLAY_DRIVER == DISPLAY_ST7701
++#ifdef HEADLESS_VIRTUAL_FB
++    ESP_LOGW(TAG, "HEADLESS_VIRTUAL_FB: ST7701 init skipped (headless DEV-KIT)");
++#else
+     board_display_st7701_init(&io_handle, &panel_handle);
++#endif
+ #endif
+ 
+     /* Step 4: PMIC (if present — after display is fully initialized) */
+@@ -1577,12 +1603,17 @@ int board_init(const board_app_config_t *app_cfg,
+ #elif BOARD_TOUCH_DRIVER == TOUCH_CST816D
+     touch_handle = board_touch_cst816d_init(i2c_bus, touch_x_max, touch_y_max);
+ #elif BOARD_TOUCH_DRIVER == TOUCH_GT911
++#ifdef HEADLESS_VIRTUAL_FB
++    ESP_LOGW(TAG, "HEADLESS_VIRTUAL_FB: GT911 init skipped (emulated touch)");
++    touch_handle = NULL;
++#else
+     touch_handle = board_touch_gt911_init(i2c_bus, touch_x_max, touch_y_max);
+     if (landscape) {
+         touch_handle->config.flags.swap_xy = 1;
+         touch_handle->config.flags.mirror_x = 0;
+         touch_handle->config.flags.mirror_y = 1;
+     }
++#endif
+ #endif
+ 
+     /* Backlight PWM was configured to its off state at the top of board_init

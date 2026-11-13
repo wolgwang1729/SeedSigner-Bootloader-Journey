@@ -1,0 +1,8 @@
+# Historical / debug sdkconfig fragment (ESP32-P4): rev 3.1 PLUS Secure Boot V2 disabled.
+# Superseded: Secure Boot V2 is verified working in esp-emu when targeting rev 3.1
+# (see emu_rev_p4.defaults). Kept for historical reference only.
+# CONFIG_ESP32P4_SELECTS_REV_LESS_V3 is not set
+CONFIG_ESP32P4_REV_MIN_301=y
+# CONFIG_SECURE_BOOT is not set
+# CONFIG_SECURE_BOOT_V2_ENABLED is not set
+# CONFIG_SECURE_SIGNED_ON_BOOT is not set

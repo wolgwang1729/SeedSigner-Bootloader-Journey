@@ -1,0 +1,134 @@
+[INFO  esp_emu] Starting emulation (chip=esp32s3, batch_size=50000)
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2af0,len:0x2eac
+load:0x403c8700,len:0xcdc
+load:0x403cb700,len:0x4fc0
+entry 0x403c890c
+W (4) boot.esp32s3: eFuse virtual mode is enabled. If Secure boot or Flash encryption is enabled then it does not provide any security. FOR TESTING ONLY!
+I (5) boot: ESP-IDF ac63a927 2nd stage bootloader
+I (5) boot: compile time Oct 16 2026 20:57:15
+W (5) boot: Unicore bootloader
+I (5) boot: chip revision: v0.0
+I (5) boot: efuse block revision: v1.0
+I (5) boot.esp32s3: Boot SPI Speed : 80MHz
+I (5) boot.esp32s3: SPI Mode       : SLOW READ
+I (6) boot.esp32s3: SPI Flash Size : 8MB
+I (6) boot: Enabling RNG early entropy source...
+I (6) boot: Partition Table:
+I (6) boot: ## Label            Usage          Type ST Offset   Length
+I (6) boot:  0 nvs              Unknown data     01 99 00011000 00006000
+I (6) boot:  1 phy_init         RF data          01 01 00017000 00001000
+W (6) efuse: [Virtual] try loading efuses from flash: 0x18000 (offset)
+W (6) efuse: [Virtual] no efuses found in flash
+W (6) efuse: [Virtual] Loading virtual efuse blocks from real efuses
+
+I (8) boot:  2 efuse            efuse            01 05 00018000 00002000
+I (8) boot:  3 factory          factory app      00 00 00020000 00200000
+I (8) boot:  4 random_fill      Unknown data     01 06 00220000 005e0000
+I (8) boot: End of partition table
+I (8) esp_image: segment 0: paddr=00020020 vaddr=3c040020 size=1596ch ( 88428) map
+I (15) esp_image: segment 1: paddr=00035994 vaddr=3fc93700 size=04d80h ( 19840) load
+I (17) esp_image: segment 2: paddr=0003a71c vaddr=40374000 size=058fch ( 22780) load
+I (19) esp_image: segment 3: paddr=00040020 vaddr=42000020 size=31524h (202020) map
+I (33) esp_image: segment 4: paddr=0007154c vaddr=403798fc size=09d98h ( 40344) load
+I (37) esp_image: segment 5: paddr=0007b2ec vaddr=403a0000 size=002d4h (   724) load
+I (37) esp_image: segment 6: paddr=0007b5c8 vaddr=50000000 size=00020h (    32) load
+I (38) esp_image: segment 7: paddr=0007b5f0 vaddr=00000000 size=049e0h ( 18912) 
+I (39) esp_image: Verifying image signature...
+I (39) secure_boot_v2: Secure boot V2 is not enabled yet and eFuse digest keys are not set
+I (40) secure_boot_v2: Verifying with RSA-PSS...
+I (40) secure_boot_v2: Signature verified successfully!
+I (43) boot: Loaded app from partition at offset 0x20000
+I (43) secure_boot_v2: enabling secure boot v2...
+I (43) efuse: Batch mode of writing fields is enabled
+I (43) esp_image: segment 0: paddr=00000020 vaddr=3fce2af0 size=02each ( 11948) 
+I (44) esp_image: segment 1: paddr=00002ed4 vaddr=403c8700 size=00cdch (  3292) 
+I (45) esp_image: segment 2: paddr=00003bb8 vaddr=403cb700 size=04fc0h ( 20416) 
+I (46) esp_image: Verifying image signature...
+I (47) secure_boot_v2: Secure boot V2 is not enabled yet and eFuse digest keys are not set
+I (47) secure_boot_v2: Verifying with RSA-PSS...
+I (48) secure_boot_v2: Signature verified successfully!
+I (48) secure_boot_v2: Secure boot digests absent, generating..
+I (49) secure_boot_v2: Digests successfully calculated, 1 valid signatures (image offset 0x0)
+I (49) secure_boot_v2: 1 signature block(s) found appended to the bootloader.
+I (49) secure_boot_v2: Burning public key hash to eFuse
+I (49) efuse: Writing EFUSE_BLK_KEY0 with purpose 9
+I (57) secure_boot_v2: Digests successfully calculated, 1 valid signatures (image offset 0x20000)
+I (57) secure_boot_v2: 1 signature block(s) found appended to the app.
+I (57) secure_boot_v2: Application key(0) matches with bootloader key(0).
+I (58) secure_boot_v2: Revoking empty key digest slot (1)...
+I (58) secure_boot_v2: Revoking empty key digest slot (2)...
+I (58) secure_boot_v2: blowing secure boot efuse...
+I (58) secure_boot: Enabling Security download mode...
+I (58) secure_boot: Disable hardware & software JTAG...
+I (58) secure_boot: Prevent read disabling of additional efuses...
+W (58) efuse: Burn:
+W (58) efuse: Virtual efuses enabled: Not really burning eFuses
+I (59) efuse: Batch mode. Prepared fields are committed
+I (59) secure_boot_v2: Secure boot permanently enabled
+I (59) boot: Disabling RNG early entropy source...
+I (59) octal_psram: vendor id    : 0x0d (AP)
+I (59) octal_psram: dev id       : 0x01 (generation 2)
+I (59) octal_psram: density      : 0x03 (64 Mbit)
+I (59) octal_psram: good-die     : 0x01 (Pass)
+I (59) octal_psram: Latency      : 0x00 (Variable)
+I (59) octal_psram: VCC          : 0x01 (3V)
+I (59) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (60) octal_psram: BurstType    : 0x00 ( Wrap)
+I (60) octal_psram: BurstLen     : 0x00 (16 Byte)
+I (60) octal_psram: Readlatency  : 0x00 (6 cycles@Variable)
+I (60) octal_psram: DriveStrength: 0x00 (1/1)
+I (60) esp_psram: Found 8MB PSRAM device
+I (60) esp_psram: Speed: 40MHz
+I (60) cpu_start: Unicore app
+I (60) cpu_start: Single core mode
+I (113) esp_psram: SPI SRAM memory test OK
+I (121) cpu_start: GPIO 44 and 43 are used as console UART I/O pins
+I (121) cpu_start: Pro cpu start user code
+I (121) cpu_start: cpu freq: 160000000 Hz
+I (121) app_init: Application information:
+I (121) app_init: Project name:     seedsigner_secure_loader
+I (121) app_init: App version:      8aeab04
+I (121) app_init: Compile time:     Oct 16 2026 20:58:46
+I (121) app_init: ELF file SHA256:  83da56de2...
+I (121) app_init: ESP-IDF:          ac63a927
+I (121) efuse_init: Min chip rev:     v0.0
+I (121) efuse_init: Max chip rev:     v0.99 
+I (121) efuse_init: Chip rev:         v0.0
+I (121) heap_init: Initializing. RAM available for dynamic allocation:
+I (121) heap_init: At 3FCC8000 len 00021710 (133 KiB): RAM
+I (121) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (121) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (121) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (121) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (122) spi_flash: detected chip: gd
+I (122) spi_flash: flash io: dio
+W (122) efuse_init: eFuse virtual mode is enabled. If Secure boot or Flash encryption is enabled then it does not provide any security. FOR TESTING ONLY!
+W (122) efuse: [Virtual] try loading efuses from flash: 0x18000 (offset)
+W (122) efuse: [Virtual] Loading virtual efuse blocks from flash
+
+I (123) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (123) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (133) main_task: Started on CPU0
+I (133) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (133) main_task: Calling app_main()
+I (133) SEEDSIGNER_LOADER: SeedSigner Stateless Loader — Target: seedsigner_esp32s3
+I (133) SEEDSIGNER_LOADER: === SD CARD PIN DIAGNOSTIC ===
+I (153) SEEDSIGNER_LOADER: Pin States: MISO(CS=1)=1, MISO(CS=0)=1
+I (153) SEEDSIGNER_LOADER: Sent 80 power-up sync clocks to SD card.
+I (153) SEEDSIGNER_LOADER: Initializing SDSPI host on SPI2 (MOSI=10, MISO=9, SCK=11, CS=12)...
+I (153) SEEDSIGNER_LOADER: Trying SDSPI mount at 4MHz (CS=GPIO 12)...
+E (173) vfs_fat_sdmmc: sdmmc_card_init failed (0x107).
+W (173) SEEDSIGNER_LOADER: SDSPI mount (4MHz) failed (ESP_ERR_TIMEOUT), trying 400kHz...
+E (193) vfs_fat_sdmmc: sdmmc_card_init failed (0x107).
+W (193) SEEDSIGNER_LOADER: SDSPI mount (400kHz) failed (ESP_ERR_TIMEOUT)
+I (193) SEEDSIGNER_LOADER: Trying SDMMC 1-bit mount (CLK=11, CMD=10, D0=9)...
+E (5193) sdmmc_periph: sdmmc_host_init: sdmmc_host_reset returned 0x107
+E (5193) vfs_fat_sdmmc: host init failed (0x107).
+E (5193) SEEDSIGNER_LOADER: SDMMC mount failed (ESP_ERR_TIMEOUT)
+E (5193) SEEDSIGNER_LOADER: Failed to mount SD card. Halting.
+[INFO  esp_emu] Timeout reached after 90.080817241s

@@ -1,0 +1,8 @@
+# Emulation-only sdkconfig fragment (ESP32-P4): target the silicon revision
+# esp-emu models (eco5 / v3.x). Must come AFTER sdkconfig.defaults.esp32p4 in
+# SDKCONFIG_DEFAULTS so it overrides SELECTS_REV_LESS_V3. Hardware builds keep
+# REV_MIN_0 (pre-v3 ROM layout at 0x4ff3ffe8); the emulator's v3.x ROM uses
+# 0x4ffbffe8, and a pre-v3 build panics in the 2nd-stage bootloader
+# (Load access fault on NULL rom_spiflash_legacy_data + 25).
+# CONFIG_ESP32P4_SELECTS_REV_LESS_V3 is not set
+CONFIG_ESP32P4_REV_MIN_301=y

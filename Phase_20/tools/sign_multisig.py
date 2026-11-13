@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+import argparse
+import hashlib
+import os
+import struct
+import sys
+import zlib
+import bech32
+from ecdsa import SigningKey, SECP256k1
+from ecdsa.util import sigencode_string
+
+BL_SECT_MAGIC = 0x54434553
+BL_SECT_STRUCT_REV = 1
+
+def crc32_fast(data):
+    return zlib.crc32(data) & 0xFFFFFFFF
+
+def pack_attribute(key, value):
+    if isinstance(value, str):
+        value = value.encode('ascii')
+    elif isinstance(value, int):
+        if value < 256:
+            value = struct.pack('<B', value)
+        elif value < 65536:
+            value = struct.pack('<H', value)
+        else:
+            value = struct.pack('<I', value)
+    return struct.pack('<BB', key, len(value)) + value
+
+def build_section(name, version, payload, attributes=b''):
+    attr_list = attributes + b'\x00' * (216 - len(attributes))
+    pl_size = len(payload)
+    pl_crc = crc32_fast(payload) if pl_size > 0 else 0
+    fmt = '<II16sIII216s'
+    header = struct.pack(fmt,
+                         BL_SECT_MAGIC,
+                         BL_SECT_STRUCT_REV,
+                         name.encode('ascii'),
+                         version,
+                         pl_size,
+                         pl_crc,
+                         attr_list)
+    struct_crc = crc32_fast(header)
+    header += struct.pack('<I', struct_crc)
+    return header + payload
+
+def version_to_sig_str(version):
+    major = version // (100 * 1000 * 1000)
+    minor = (version // (100 * 1000)) % 1000
+    patch = (version // 100) % 1000
+    rc_rev = version % 100
+    if rc_rev == 99:
+        return f"{major}.{minor}.{patch}"
+    else:
+        return f"{major}.{minor}.{patch}rc{rc_rev}"
+
+def main():
+    parser = argparse.ArgumentParser(description="Sign payload for SeedSigner ESP32 bootloader")
+    parser.add_argument("input", help="Raw input binary")
+    parser.add_argument("output", help="Signed output binary")
+    parser.add_argument("--platform", default="seedsigner_esp32p4",
+                        choices=["seedsigner_esp32p4", "seedsigner_esp32s3"],
+                        help="Target platform identifier (default: seedsigner_esp32p4)")
+    parser.add_argument("--version", type=int, default=1, help="Firmware version (default: 1)")
+    parser.add_argument("--key", default=None, action="append",
+                        help="Path to PEM payload signing key (repeat for multisig)")
+    parser.add_argument("--profile", default=None, help="Keys profile (test|production)")
+
+    args = parser.parse_args()
+
+    key_paths = args.key or [os.environ.get(
+        "VENDOR_SIGNING_KEY",
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "payload_signing_key.pem"),
+    )]
+    for key_path in key_paths:
+        if not os.path.exists(key_path):
+            print(f"ERROR: Payload signing key not found at {key_path}")
+            sys.exit(1)
+
+    # Key-match WARNING omitted: multisig bundles intentionally combine keys
+    # that no single keys/<profile>/vendor_keys.c contains. The loader under
+    # test (with the matching multi-key list) is the authority, not this file.
+
+    fp = None  # per-key fingerprints are computed in the signing loop below
+
+    with open(args.input, 'rb') as f:
+        payload = f.read()
+
+    attrs = pack_attribute(4, args.platform) + pack_attribute(1, "secp256k1-sha256")
+    main_section = build_section("main", args.version, payload, attrs)
+
+    main_hash = hashlib.sha256(main_section).digest()
+    digest2 = hashlib.sha256(main_hash).digest()
+    hrp = version_to_sig_str(args.version) + "-"
+    converted_bits = bech32.convertbits(digest2, 8, 5, pad=True)
+    msg_str = bech32.bech32_encode(hrp, converted_bits)
+    msg_bytes = msg_str.encode('ascii')
+
+    prefix = b"\x18Bitcoin Signed Message:\n"
+    len_byte = bytes([len(msg_bytes)])
+    in_digest = hashlib.sha256(prefix + len_byte + msg_bytes).digest()
+    btc_digest = hashlib.sha256(in_digest).digest()
+    sig_payload = b""
+    for key_path in key_paths:
+        priv_key = SigningKey.from_pem(open(key_path, "rb").read())
+        pub_bytes = priv_key.get_verifying_key().to_string("uncompressed")
+        fp_i = hashlib.sha256(pub_bytes).digest()[:16]
+        signature = priv_key.sign_digest_deterministic(btc_digest, sigencode=sigencode_string)
+        r = int.from_bytes(signature[:32], 'big')
+        s_ = int.from_bytes(signature[32:], 'big')
+        order = SECP256k1.order
+        if s_ > order // 2:
+            s_ = order - s_
+        sig_payload += fp_i + r.to_bytes(32, 'big') + s_.to_bytes(32, 'big')
+    sig_section = build_section("sign", 1, sig_payload)
+
+    with open(args.output, 'wb') as f:
+        f.write(main_section)
+        f.write(sig_section)
+
+    print(f"Successfully signed {args.output} (Platform: {args.platform}, Version: {args.version})")
+
+if __name__ == "__main__":
+    main()

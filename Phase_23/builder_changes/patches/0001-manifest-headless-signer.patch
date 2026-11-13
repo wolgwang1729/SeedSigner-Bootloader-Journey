@@ -1,0 +1,12 @@
+diff --git a/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_43/manifest.py b/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_43/manifest.py
+index 8b759eb..d35f530 100644
+--- a/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_43/manifest.py
++++ b/deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_P4_WIFI6_TOUCH_LCD_43/manifest.py
+@@ -65,5 +65,7 @@ try:
+     package("seedsigner", base_path="$(MPY_DIR)/../../../frozen_app")
+     package("embit", base_path="$(MPY_DIR)/../../../frozen_app")
+     module("seedsigner_frozen_build.py", base_path="$(MPY_DIR)/../../../frozen_app")
++    module("_headless_fixtures.py", base_path="$(MPY_DIR)/../../../frozen_app")
++    module("_headless_signer.py", base_path="$(MPY_DIR)/../../../frozen_app")
+ except OSError:
+     pass  # frozen_app not staged (e.g. CI) -> build without the frozen app tree
