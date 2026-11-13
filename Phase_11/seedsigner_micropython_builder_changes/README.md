@@ -3,7 +3,7 @@
 Documentation + artifacts for the changes required in
 [`seedsigner-micropython-builder`](https://github.com/kdmukai/seedsigner-micropython-builder)
 so it builds firmware that boots on top of the Phase 11 **stateless bootloader**
-(`seedsigner_bootloader_p4_stateless_os`, sibling folder in `SoB/Phase_11/`).
+(`seedsigner_bootloader_p4_stateless_os`, sibling folder in `Phase_11/`).
 
 The custom bootloader flashes the app to `0x10000`, jumps straight into the app's
 custom entry point, and **never runs the ESP-IDF 2nd-stage bootloader**. That means
@@ -251,7 +251,7 @@ bootloader, partition table, `flash_args`).
 
 `micropython.bin` is the **app** image; it is flashed by the stateless loader (it is not
 a self-contained esptool image). See the loader's `run_micropython.sh` / `run.sh` in
-`SoB/Phase_11/`.
+`Phase_11/`.
 
 ## Verification
 

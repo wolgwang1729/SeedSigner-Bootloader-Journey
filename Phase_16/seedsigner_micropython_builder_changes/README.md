@@ -3,7 +3,7 @@
 Documentation + artifacts for the changes required in
 [`seedsigner-micropython-builder`](https://github.com/kdmukai/seedsigner-micropython-builder)
 so it builds MicroPython firmware that boots on top of the Phase 15/16 **ESP32-S3 stateless secure bootloader**
-(`seedsigner_bootloader_esp32s3_stateless_os`, sibling folder in `SoB/Phase_16/`).
+(`seedsigner_bootloader_esp32s3_stateless_os`, sibling folder in `Phase_16/`).
 
 The custom bootloader executes the app statelessly from PSRAM via Cache MMU table remap (`0x600C5000`),
 jumps straight into the app's custom entry point (`my_entry_point` in `entry.S`), and

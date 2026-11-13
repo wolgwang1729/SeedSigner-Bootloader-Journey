@@ -1,7 +1,7 @@
 # Phase 12 — Debugging Notes: Payload never boots after `JMP[13] JUMP!`
 
 Status: **resolved** — the Specter-signed hello-world payload and MicroPython
-payload both boot end-to-end through the secure loader. Five root causes were
+payload both boot end-to-end through the secure loader. Six root causes were
 found and fixed:
 
 1. [Part 1 — loader memory layout](#part-1--loader-code-overlapped-the-payload-region)

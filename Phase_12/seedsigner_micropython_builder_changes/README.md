@@ -4,7 +4,7 @@ Documentation + artifacts for the changes required in
 [`seedsigner-micropython-builder`](https://github.com/kdmukai/seedsigner-micropython-builder)
 so it builds firmware that boots on top of the Phase 12 **Specter-verified stateless
 bootloader** (`seedsigner_bootloader_p4_stateless_os`, sibling folder in
-`SoB/Phase_12/`).
+`Phase_12/`).
 
 The Phase 12 loader adds Specter-DIY secp256k1 multisig verification before the
 stateless PSRAM handoff (Phase 11). The MicroPython payload boots through the same

@@ -22,7 +22,7 @@ This document reviews and compares the bootloader designs and security implement
 - [Bootloader Related Things in SeedSigner MicroPython Builder](#bootloader-related-things-in-seedsigner-micropython-builder)
 
 # Specter-DIY
-## [cryptoadvance/specter-diy](https://github.com/cryptoadvance/specter-diy/) -> [cryptoadvance/specter-bootloader/blob/master](https://github.com/cryptoadvance/specter-bootloader/blob/master/)
+## [cryptoadvance/specter-diy](https://github.com/cryptoadvance/specter-diy/) -> [cryptoadvance/specter-bootloader](https://github.com/cryptoadvance/specter-bootloader)
 **Specter-DIY Bootloader Upgrade & Execution Flow:**
 ```mermaid
 graph TD
@@ -469,8 +469,8 @@ flowchart TD
 ### Copy pasting how the booting process is described in the readme.MD:
 The Bootloader resides in the internal flash memory of the microcontroller and consists of two parts:
 
-- 1-st stage non-upgradable bootloader called the [Start-up code](https://github.com/cryptoadvance/specter-bootloader/blob/master/#Start-up-code)
-- 2-nd stage bootloader called simply the [Bootloader](https://github.com/cryptoadvance/specter-bootloader/blob/master/#Bootloader)
+- 1-st stage non-upgradable bootloader called the [Start-up code](#start-up-code)
+- 2-nd stage bootloader called simply the [Bootloader](#bootloader)
 ### Start-up code
 First, at power-on, the **Start-up code** takes control over the microcontroller. Its role is quite simple: to verify the integrity of up to 2 copies of the Bootloader and select the one with the latest version to be executed next.
 
@@ -1321,9 +1321,9 @@ This document contains a complete description of how the repository produces, pa
 - The repository builds a standard ESP-IDF/ESP32 bootloader as part of each MicroPython firmware build. The bootloader binary is emitted as `build/<BOARD>/bootloader/bootloader.bin` and packaged with the partition table and MicroPython application image for flashing.
 
 ## Build flow — where the bootloader is produced
-- [`scripts/build_firmware.sh`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/scripts/build_firmware.sh) is the primary build orchestration script:
+- [`scripts/build_firmware.sh`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/scripts/build_firmware.sh) is the primary build orchestration script:
     - Builds `mpy-cross`.
-    - Invokes `make` in [`deps/micropython/upstream/ports/esp32`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/deps/micropython/upstream/ports/esp32) with `BOARD`, `BUILD`, `USER_C_MODULES`, and `CMAKE_ARGS` set so that the IDF/CMake build picks up project components and board-specific config.
+    - Invokes `make` in [`ports/esp32`](https://github.com/kdmukai/seedsigner-micropython-builder/tree/main/ports/esp32) (or upstream MicroPython's [`ports/esp32`](https://github.com/micropython/micropython/tree/master/ports/esp32)) with `BOARD`, `BUILD`, `USER_C_MODULES`, and `CMAKE_ARGS` set so that the IDF/CMake build picks up project components and board-specific config.
     - The IDF/CMake build writes the bootloader image to the board build dir: `build/<BOARD>/bootloader/bootloader.bin`.
     - The script packages build outputs into `build/<BOARD>/flash/` by copying:
         - `flash_args` (esptool argument file)
@@ -1333,28 +1333,28 @@ This document contains a complete description of how the repository produces, pa
 
     - It prints an example esptool command using the produced `flash_args`.
 
-- [`Makefile`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/Makefile) provides a `dist` target which copies the same bootloader and related flash artifacts into `dist/<BOARD>/bootloader/` and `dist/<BOARD>/partition_table/`.
+- [`Makefile`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/Makefile) provides a `dist` target which copies the same bootloader and related flash artifacts into `dist/<BOARD>/bootloader/` and `dist/<BOARD>/partition_table/`.
 
 ## CI and artifact packaging
-- The repository's CI (see [`.github/workflows/build-firmware.yml`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/.github/workflows/build-firmware.yml)) runs the build inside a prebaked Docker image and collects artifacts. After building the firmware the CI copies the following into `out/` for upload:
+- The repository's CI (see [`.github/workflows/build-firmware.yml`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/.github/workflows/build-firmware.yml)) runs the build inside a prebaked Docker image and collects artifacts. After building the firmware the CI copies the following into `out/` for upload:
     - `micropython.bin`, `micropython.elf`, `flash_args`
     - `bootloader/bootloader.bin` → `out/bootloader/`
     - `partition-table.bin` → `out/partition_table/`
 
-- [`scripts/ci/ci.sh`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/scripts/ci/ci.sh) `collect-artifacts` performs identical copying for other CI targets. These artifacts are uploaded by GitHub Actions for downstream download and flashing.
+- [`scripts/ci/ci.sh`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/scripts/ci/ci.sh) `collect-artifacts` performs identical copying for other CI targets. These artifacts are uploaded by GitHub Actions for downstream download and flashing.
 
 ## Where bootloader-related logic and configuration live in the tree
-- [`scripts/build_firmware.sh`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/scripts/build_firmware.sh) — full build + packaging orchestration; copies `bootloader.bin` into `build/<BOARD>/flash/`.
-- [`Makefile`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/Makefile) — `dist` target copies bootloader into `dist/<BOARD>/bootloader/`.
-- [`scripts/ci/ci.sh`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/scripts/ci/ci.sh) and [`.github/workflows/build-firmware.yml`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/.github/workflows/build-firmware.yml) — CI build and artifact collection steps that copy and publish `bootloader.bin`.
-- [`deps/micropython/upstream/ports/esp32/mpconfigport.h`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/deps/micropython/upstream/ports/esp32/mpconfigport.h) — MicroPython port configuration macros that affect bootloader entry points and boot-related behavior (for example `MICROPY_BOARD_ENTER_BOOTLOADER` and `MICROPY_PY_MACHINE_BOOTLOADER`).
-- [`deps/micropython/mods/patches/0001-esp32-integration-mods.patch`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/deps/micropython/mods/patches/0001-esp32-integration-mods.patch) — repository patches that modify the ESP32 CMake files to accept extra component directories and register IDF components (including `bootloader_support`). These patches show how the repo injects build-time configuration that influences the bootloader build.
-- [`ports/esp32/`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/ports/esp32) in the workspace — board config directories, `sdkconfig` fragments, and extra IDF components can be added here; the build will pick them up via `MICROPY_EXTRA_COMPONENT_DIRS`.
+- [`scripts/build_firmware.sh`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/scripts/build_firmware.sh) — full build + packaging orchestration; copies `bootloader.bin` into `build/<BOARD>/flash/`.
+- [`Makefile`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/Makefile) — `dist` target copies bootloader into `dist/<BOARD>/bootloader/`.
+- [`scripts/ci/ci.sh`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/scripts/ci/ci.sh) and [`.github/workflows/build-firmware.yml`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/.github/workflows/build-firmware.yml) — CI build and artifact collection steps that copy and publish `bootloader.bin`.
+- [`mpconfigport.h`](https://github.com/micropython/micropython/blob/master/ports/esp32/mpconfigport.h) — MicroPython port configuration macros that affect bootloader entry points and boot-related behavior (for example `MICROPY_BOARD_ENTER_BOOTLOADER` and `MICROPY_PY_MACHINE_BOOTLOADER`).
+- [`deps/micropython/mods/patches/0001-esp32-integration-mods.patch`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/deps/micropython/mods/patches/0001-esp32-integration-mods.patch) — repository patches that modify the ESP32 CMake files to accept extra component directories and register IDF components (including `bootloader_support`). These patches show how the repo injects build-time configuration that influences the bootloader build.
+- [`ports/esp32/`](https://github.com/kdmukai/seedsigner-micropython-builder/tree/main/ports/esp32) in the workspace — board config directories, `sdkconfig` fragments, and extra IDF components can be added here; the build will pick them up via `MICROPY_EXTRA_COMPONENT_DIRS`.
 
 ## Build-time knobs & relevant variables
-- `MICROPY_CMAKE_ARGS` (set in [`scripts/build_firmware.sh`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/scripts/build_firmware.sh)) appends `-DUSER_C_MODULES` and `-DMICROPY_EXTRA_COMPONENT_DIRS` so additional IDF component directories and project components are discoverable by CMake.
+- `MICROPY_CMAKE_ARGS` (set in [`scripts/build_firmware.sh`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/scripts/build_firmware.sh)) appends `-DUSER_C_MODULES` and `-DMICROPY_EXTRA_COMPONENT_DIRS` so additional IDF component directories and project components are discoverable by CMake.
 - `MICROPY_EXTRA_COMPONENT_DIRS` enables adding IDF components that may be consumed by the app and, depending on CMake registration, by the bootloader.
-- The patched [`esp32_common.cmake`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/deps/micropython/mods/esp32_common.cmake) in [`deps/micropython/mods/`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/deps/micropython/mods) introduces `MICROPY_DISABLE_NETWORK` and conditional component lists; these influence which IDF components (e.g. `esp_wifi`, `lwip`) are included in builds and therefore can change the final set of registered components visible to the build system (including bootloader-related components like `bootloader_support`).
+- The patched `esp32_common.cmake` in [`deps/micropython/mods/`](https://github.com/kdmukai/seedsigner-micropython-builder/tree/main/deps/micropython/mods) introduces `MICROPY_DISABLE_NETWORK` and conditional component lists; these influence which IDF components (e.g. `esp_wifi`, `lwip`) are included in builds and therefore can change the final set of registered components visible to the build system (including bootloader-related components like `bootloader_support`).
 - `BOARD` and `BOARD_CONFIG_DIR` select board-specific `sdkconfig` defaults; these `sdkconfig` settings are used by IDF/CMake and directly affect bootloader behavior and options during the IDF build.
 
 ## Packaging & flashing
@@ -1396,14 +1396,14 @@ flowchart TD
     
     Dist --> Flash(["esptool write_flash"]):::startEnd
 ```
-1. Developer (or CI) runs the build (locally or in Docker via `make docker-build-all` / [`scripts/docker_build_all.sh`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/scripts/docker_build_all.sh)).
-2. [`scripts/build_firmware.sh`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/scripts/build_firmware.sh) configures CMake with `MICROPY_CMAKE_ARGS`, builds `mpy-cross`, then invokes the MicroPython ESP32 port build.
+1. Developer (or CI) runs the build (locally or in Docker via `make docker-build-all` / [`scripts/docker_build_all.sh`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/scripts/docker_build_all.sh)).
+2. [`scripts/build_firmware.sh`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/scripts/build_firmware.sh) configures CMake with `MICROPY_CMAKE_ARGS`, builds `mpy-cross`, then invokes the MicroPython ESP32 port build.
 3. The IDF/CMake build produces `bootloader.bin` in the board build directory.
 4. Build scripts copy `bootloader.bin` into `build/<BOARD>/flash/bootloader/` and into `dist/` / `out/` locations for release and CI.
 5. Consumers use the generated `flash_args` with `esptool` to flash the bootloader, partition table, and application image to devices.
 
 ## Where to change or extend bootloader behavior in this repo
-- To add custom code into the bootloader build: register an IDF component in a directory under [`ports/esp32/`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/ports/esp32) (or another path included via `MICROPY_EXTRA_COMPONENT_DIRS`) and ensure the component is picked up by CMake registration when building the project.
+- To add custom code into the bootloader build: register an IDF component in a directory under [`ports/esp32/`](https://github.com/kdmukai/seedsigner-micropython-builder/tree/main/ports/esp32) (or another path included via `MICROPY_EXTRA_COMPONENT_DIRS`) and ensure the component is picked up by CMake registration when building the project.
 - To alter SDK/bootloader configuration, provide or modify `sdkconfig` files in the board's config directory referenced by `BOARD_CONFIG_DIR`.
-- To modify how the repo packages bootloader artifacts, edit [`scripts/build_firmware.sh`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/scripts/build_firmware.sh), [`Makefile`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/Makefile) (the `dist` target), or [`scripts/ci/ci.sh`](https://gitlab.com/kdmukAI-bot/seedsigner-micropython-builder/-/blob/main/scripts/ci/ci.sh) (artifact collection logic).
+- To modify how the repo packages bootloader artifacts, edit [`scripts/build_firmware.sh`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/scripts/build_firmware.sh), [`Makefile`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/Makefile) (the `dist` target), or [`scripts/ci/ci.sh`](https://github.com/kdmukai/seedsigner-micropython-builder/blob/main/scripts/ci/ci.sh) (artifact collection logic).
 

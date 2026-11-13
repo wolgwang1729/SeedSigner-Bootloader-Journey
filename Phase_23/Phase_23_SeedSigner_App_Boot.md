@@ -11,7 +11,7 @@
 
 ## 1. Context & Architecture (Slice A vs Slice B)
 
-Physical LCD and camera modules (`ESP32-P4-WIFI6-Touch-LCD-4.3-C`) are on order (`Orders/Hardwares.md`, Oct 20). Rather than halting progress or churning roadmap phase numbers, Phase 23 is structured into two cleanly delineated slices:
+Physical LCD and camera modules (`ESP32-P4-WIFI6-Touch-LCD-4.3-C`) are not available right now. Rather than halting progress or churning roadmap phase numbers, Phase 23 is structured into two cleanly delineated slices:
 
 | Slice | Focus | Hardware Required | Status |
 |---|---|---|---|
