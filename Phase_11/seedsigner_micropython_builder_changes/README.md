@@ -1,7 +1,7 @@
 # Phase 11 — SeedSigner MicroPython Builder Changes
 
 Documentation + artifacts for the changes required in
-[`seedsigner-micropython-builder`](https://github.com/SeedSigner/seedsigner-micropython-builder)
+[`seedsigner-micropython-builder`](https://github.com/kdmukai/seedsigner-micropython-builder)
 so it builds firmware that boots on top of the Phase 11 **stateless bootloader**
 (`seedsigner_bootloader_p4_stateless_os`, sibling folder in `SoB/Phase_11/`).
 

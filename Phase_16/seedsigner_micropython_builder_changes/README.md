@@ -1,7 +1,7 @@
 # Phase 16 — SeedSigner MicroPython Builder Changes (ESP32-S3)
 
 Documentation + artifacts for the changes required in
-[`seedsigner-micropython-builder`](https://github.com/SeedSigner/seedsigner-micropython-builder)
+[`seedsigner-micropython-builder`](https://github.com/kdmukai/seedsigner-micropython-builder)
 so it builds MicroPython firmware that boots on top of the Phase 15/16 **ESP32-S3 stateless secure bootloader**
 (`seedsigner_bootloader_esp32s3_stateless_os`, sibling folder in `SoB/Phase_16/`).
 

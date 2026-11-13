@@ -106,7 +106,7 @@ On development boards lacking display and touch hardware:
 
 ## 3. Builder Integration (`seedsigner-micropython-builder`)
 
-The MicroPython payload is built using [`seedsigner-micropython-builder`](https://github.com/SeedSigner/seedsigner-micropython-builder) via Docker. The integration overlay is structured under `deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_S3_TOUCH_LCD_35B/`:
+The MicroPython payload is built using [`seedsigner-micropython-builder`](https://github.com/kdmukai/seedsigner-micropython-builder) via Docker. The integration overlay is structured under `deps/micropython/mods/new_files/ports/esp32/boards/WAVESHARE_ESP32_S3_TOUCH_LCD_35B/`:
 
 | File | Role |
 |---|---|

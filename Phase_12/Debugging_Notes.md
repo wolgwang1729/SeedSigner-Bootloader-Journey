@@ -17,7 +17,10 @@ found and fixed:
 6. [Part 6 — SD card mounts but the bundle is "not found"](#part-6--sd-card-mounts-but-seedsigner_esp32p4bin-not-found-fatfs-lfn)
    (FatFs LFN disabled by default; long filename needs `CONFIG_FATFS_LFN_HEAP=y`).
 
-## Symptom
+<a id="part-1--loader-code-overlapped-the-payload-region"></a>
+## Part 1 — Loader code overlapped the payload region
+
+### Symptom
 
 The Phase 12 secure loader (stateless, executes payload from PSRAM via a rewired
 Cache MMU) boots, maps, copies and verifies the Specter-signed payload, prints the
@@ -144,6 +147,7 @@ PHASE 12 ...            (payload banner)
 
 ---
 
+<a id="part-2--the-loaders-main-task-stack-overlapped-the-payloads-sram-text"></a>
 # Part 2: The loader's main-task stack overlapped the payload's SRAM text
 
 Follow-on bug. After Part 1, the loader relocated cleanly and copied the payload,
@@ -236,6 +240,7 @@ Single `rst:0x1 (POWERON)`; 23+ periodic hellos with no further reset.
 
 ---
 
+<a id="part-3---shim-vector-table-install-was-missing"></a>
 ## Part 3 — `stateless_shim` boot path (WDT reset → vector-table fix)
 
 The whole point of the shim is that it is **reusable**: the same
@@ -319,6 +324,7 @@ Hello from a FreeRTOS Task running completely in PSRAM (shim boot)!  (every ~1 s
 
 ---
 
+<a id="part-4---minimal_build-silently-drops-spiram-from-the-component-set"></a>
 ## Part 4 — Stock ESP-IDF `hello_world` through the shim (MINIMAL_BUILD gotcha)
 
 To prove the shim is genuinely drop-in, the **unmodified**
@@ -385,6 +391,7 @@ Restarting now.   →   rst:0xc (SW_CPU_RESET)   →   full second boot cycle
 2 hellos across two full `esp_restart()` cycles, zero `HP_SYS_HP_WDT_RESET`, zero
 panics.
 
+<a id="part-5--micropython-shim-clic-vector-table-fix-same-class-different-api-name"></a>
 ## Part 5 — MicroPython shim: CLIC vector-table fix (same class, different API name)
 
 ### Symptom
@@ -450,6 +457,7 @@ P12_MP_OK
 >>>
 ```
 
+<a id="part-6--sd-card-mounts-but-seedsigner_esp32p4bin-not-found-fatfs-lfn"></a>
 ## Part 6 — SD card mounts but `seedsigner_esp32p4.bin` "not found" (FatFs LFN)
 
 ### Symptom

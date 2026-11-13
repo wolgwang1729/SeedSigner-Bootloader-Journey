@@ -14,7 +14,7 @@ There is still substantial R&D work ahead for the SeedSigner MicroPython port fo
 This document reviews and compares the bootloader designs and security implementations of **Specter-DIY** and **Kern**. While Specter-DIY uses a stateful approach for code but operates statelessly regarding secrets via an SD card boot process, Kern opts for a fully stateful model with direct execution from internal flash, heavily relying on ESP32-P4 eFuses for security. As of v0.0.15 (July 2026), Kern has implemented Phases 0–4 of its security roadmap: anti-phishing via eFuse HMAC, NVS encryption, and air-gapped SD card firmware updates with **RSA-3072** signature verification. The secure boot scheme pivoted from ECDSA-P256 to **RSA-3072 (RSA-PSS)** because ECDSA Secure Boot v2 is non-functional on ESP32-P4 silicon (chip errata). Boot-time eFuse enforcement (Phase 6) and flash encryption (Phase 5, blocked on IDF ≥ 6.1) remain ahead — an unsigned app still boots, and signature verification is currently enforced only on the OTA update path.
 
 ## Table of Contents
-- [Summary](#executive-summary)
+- [Summary](#summary)
 - [Specter-DIY](#specter-diy)
 - [ESP IDF](#esp-idf)
 - [Kern](#kern-githubcomodudexkern)

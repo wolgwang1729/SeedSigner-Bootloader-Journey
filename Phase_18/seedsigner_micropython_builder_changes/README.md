@@ -1,6 +1,6 @@
 # Phase 18 - SeedSigner MicroPython Builder Changes (ESP32-P4 Stateless + Headless Virtual FB)
 
-Documentation, patch files, and overlay artifacts for the changes required in [`seedsigner-micropython-builder`](https://github.com/SeedSigner/seedsigner-micropython-builder) to build the **Phase 18 Slice 2 SeedSigner MicroPython firmware** on the ESP32-P4.
+Documentation, patch files, and overlay artifacts for the changes required in [`seedsigner-micropython-builder`](https://github.com/kdmukai/seedsigner-micropython-builder) to build the **Phase 18 Slice 2 SeedSigner MicroPython firmware** on the ESP32-P4.
 
 This produces a signed, completely stateless bundle (`seedsigner_esp32p4.bin`, ~4.52 MB) that boots via the Phase 18 stateless secure bootloader into PSRAM and renders the genuine SeedSigner UI and interactive keyboard headlessly over serial.
 
