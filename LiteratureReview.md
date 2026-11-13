@@ -508,7 +508,7 @@ There exists an ESP MicroPython port that provides a binding layer, allowing Pyt
 While the ESP32 itself runs C/C++ code, the tools (like ESP-IDF's `idf.py`) used on the computer to build, configure, and flash that code are largely orchestrated by Python.
 
 ## Bootloader-related code
-### 1. [`bootloader/`](https://github.com/espressif/esp-idf/blob/v6.0.1/components/bootloader) — The Bootloader Project 
+### 1. [`bootloader/`](https://github.com/espressif/esp-idf/tree/v6.0.1/components/bootloader) — The Bootloader Project 
 The above is the second stage bootloader code. The first-stage bootloader is in the chip's ROM (mask ROM) and is not part of this repository. It is shipped in silicon, not as source.
 
 **Overview**
@@ -630,7 +630,7 @@ flowchart TD
 **Concurrency / CPU state notes**
 
 - A comment at the top states: *"We arrive here after the ROM bootloader finished loading this second stage bootloader from flash. The hardware is mostly uninitialized, flash cache is down and the app CPU is in reset. We do have a stack, so we can do the initialization in C."* This explains why the bootloader performs minimal, necessary initialization before accessing flash and peripherals.
-### 2. [`bootloader_support/`](https://github.com/espressif/esp-idf/blob/v6.0.1/components/bootloader_support) — Shared Bootloader APIs 
+### 2. [`bootloader_support/`](https://github.com/espressif/esp-idf/tree/v6.0.1/components/bootloader_support) — Shared Bootloader APIs 
 - **Purpose:** Code used by both the bootloader and the main app
 - Includes critical functionality like partition management, secure boot, flash encryption, and image validation
 - Defined in [README.rst](https://github.com/espressif/esp-idf/blob/v6.0.1/components/bootloader_support/README.rst)  as "APIs used by bootloader but needed by main app"
@@ -837,7 +837,7 @@ classDiagram
 
 
 
-### 3. [`esp_bootloader_format/`](https://github.com/espressif/esp-idf/blob/v6.0.1/components/esp_bootloader_format) — Bootloader Descriptor Format 
+### 3. [`esp_bootloader_format/`](https://github.com/espressif/esp-idf/tree/v6.0.1/components/esp_bootloader_format) — Bootloader Descriptor Format 
 `esp_bootloader_format`  — provides a small, fixed-size bootloader description structure placed in RAM and an accessor to retrieve it from applications/bootloader.
 
 **What it contains**
@@ -883,7 +883,7 @@ classDiagram
 - `CONFIG_BOOTLOADER_ANTI_ROLLBACK_ENABLE`  (checked in code):
     - If enabled, `secure_version`  is set to `CONFIG_BOOTLOADER_SECURE_VERSION` ; otherwise it's zero.
 
-### 4. [`esp_common/`](https://github.com/espressif/esp-idf/blob/v6.0.1/components/esp_common) — Common Definitions 
+### 4. [`esp_common/`](https://github.com/espressif/esp-idf/tree/v6.0.1/components/esp_common) — Common Definitions 
 `esp_common`  — shared low-level definitions, attributes, compiler helpers, error code definitions and lookup, and general-purpose macros used across ESP-IDF.
 
 - 

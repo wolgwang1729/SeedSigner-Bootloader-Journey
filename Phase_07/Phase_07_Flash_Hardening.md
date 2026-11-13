@@ -130,7 +130,7 @@ sequenceDiagram
     Note over Flash: Attacker retrieves device later,<br/>reads seed from 0x700000
 ```
 
-![Naive secret stashing — no flash fill](./Naive%20Secret%20Stashing.png)
+![Naive secret stashing — no flash fill](./naive_secret_stashing.png)
 
 #### Verdict
 
@@ -182,7 +182,7 @@ sequenceDiagram
     Note over User: User is alerted to tampering
 ```
 
-![Secret stashing with flash fill — tamper-evident seal](./Secret%20Stashing%20with%20Flash%20Fill.png)
+![Secret stashing with flash fill — tamper-evident seal](./secret_stashing_with_flash_fill.png)
 
 #### Verdict
 
@@ -219,7 +219,7 @@ flowchart TB
     J["Collision search space:<br/>~2^22 = 4.2M combinations<br/>ESP32 SHA-256: ~50K hashes/sec<br/>Time: ~84 seconds"] -.-> E
 ```
 
-![Brute-force hash collision attack flow](./Secret%20Stashing%20with%20Flash%20Fill%20and%20Brute%20Force.png)
+![Brute-force hash collision attack flow](./secret_stashing_with_flash_fill_and_brute_force.png)
 
 #### The Math
 

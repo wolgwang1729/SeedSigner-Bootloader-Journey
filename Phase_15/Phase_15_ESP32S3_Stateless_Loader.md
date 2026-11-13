@@ -84,7 +84,7 @@ So a payload's `.text` at `0x42000020` (linear `0x20`) and `.rodata` at `0x3C020
 | | ESP32-P4 | ESP32-S3 |
 |---|---|---|
 | **Internal SRAM caching** | L2MEM is **behind L1 D-cache** → dirty lines must be explicitly drained after segment copies (64 KB `evict_buf`, 256 KB post-copy drain) | IRAM/DRAM is **uncached** → plain stores land in physical SRAM directly. **No `evict_buf` needed.** |
-| **PSRAM staging** | `Cache_WriteBack_Addr(0x10/0x20, ...)` on both I and D sides | D-cache is **write-back** → `esp_cache_msync(fake_flash, len, C2M \| INVALIDATE)` before remap |
+| **PSRAM staging** | `Cache_WriteBack_Addr(0x10/0x20, ...)` on both I and D sides | D-cache is **write-back** → `esp_cache_msync(fake_flash, len, C2M &#124; INVALIDATE)` before remap |
 | **Post-remap invalidation** | `Cache_Invalidate_Addr()` per address range + `fence.i` | `Cache_Invalidate_ICache_All()` + `Cache_Invalidate_DCache_All()` (whole-cache flush) + `isync` |
 | **ROM bug** | None | `ESP_ROM_HAS_CACHE_WRITEBACK_BUG = 1` — ROM `Cache_WriteBack_Addr` is buggy on S3. Use `esp_cache_msync()` from the IDF API instead. |
 

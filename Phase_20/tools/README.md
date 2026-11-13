@@ -7,7 +7,7 @@ This directory contains host-side test drivers, verification scripts, and negati
 | Tool | Purpose | Route |
 |---|---|---|
 | `verify_r7.py` | Host ChaCha20-Poly1305 AEAD interop verification against standard Python `cryptography` library | R7 |
-| `verify_r3.py` | Host anti-phishing recomputation verifying `SHA256(fill_hash \|\| salt \|\| cid_pack)` against board BIP-39 words | R3 |
+| `verify_r3.py` | Host anti-phishing recomputation verifying `SHA256(fill_hash &#124;&#124; salt &#124;&#124; cid_pack)` against board BIP-39 words | R3 |
 | `make_attacks.py` | Fresh negative attack bundle generator (generates `good.bin`, `raw.bin`, `tamper.bin`, `badsig.bin`, `wrong-platform.bin`, `downgrade.bin`) | R1, R2 |
 | `sign_multisig.py` | Multi-key Specter multisig signing tool supporting threshold tests | R4 |
 | `canary_session.py` | Headless serial session driver for automated command sequencing, reset injection, and reboot log collection | R0 |
